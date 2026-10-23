@@ -134,6 +134,28 @@ describe("accounts: rules the database enforces", () => {
     );
   });
 
+  it("rejects an opening date in the future (D-30), on insert and on update", async () => {
+    await expect(
+      asUser(db, ALICE, () =>
+        db.query(
+          `insert into public.accounts (name, type, currency, opening_balance_on)
+           values ('Future', 'cash', 'GHS', (now() at time zone 'Africa/Accra')::date + 1)`,
+        ),
+      ),
+    ).rejects.toThrow(/accounts_opening_balance_on_not_future/);
+
+    const account = await addAccount(ALICE, { name: "Today" });
+    await expect(
+      asUser(db, ALICE, () =>
+        db.query(
+          `update public.accounts
+           set opening_balance_on = (now() at time zone 'Africa/Accra')::date + 1 where id = $1`,
+          [account.id],
+        ),
+      ),
+    ).rejects.toThrow(/accounts_opening_balance_on_not_future/);
+  });
+
   it("refuses two accounts with the same name for one user, ignoring case", async () => {
     await addAccount(ALICE, { name: "Savings", type: "bank" });
     await expect(addAccount(ALICE, { name: "SAVINGS", type: "bank" })).rejects.toThrow(

@@ -75,6 +75,7 @@ password manager's notes), so you know where to continue.
 | File | What it adds |
 |---|---|
 | `20261023120000_accounts.sql` | the `accounts` table (build step 2) |
+| `20261023180000_accounts_opening_date_not_future.sql` | refuses future opening dates (D-30) |
 
 The same files run in the tests (`supabase/tests/`), in PGlite, an in-memory
 Postgres, so the database rules are tested on every push.
