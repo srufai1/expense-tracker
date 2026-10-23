@@ -29,6 +29,11 @@ describe("safeRedirectPath", () => {
     expect(safeRedirectPath("/\\/evil.example")).toBe("/");
   });
 
+  it("falls back when the address cannot be read at all", () => {
+    // A space is not allowed in a host name, so the URL parser throws.
+    expect(safeRedirectPath("//exa mple")).toBe("/");
+  });
+
   it("keeps an encoded character as part of a path inside the app", () => {
     expect(safeRedirectPath("/%09/evil.example")).toBe("/%09/evil.example");
   });

@@ -57,14 +57,22 @@ You need Node.js 22 or newer and a Supabase project.
 
 ## Checks
 
-Run all four before every commit. CI runs the same on every pull request.
-
 ```bash
-npm run lint        # code style and common mistakes
-npm run typecheck   # TypeScript types (generates Next.js route types first)
-npm run test        # unit tests (Vitest)
-npm run build       # production build
+npm run check          # all of the below, in order — run before merging
+npm run lint           # code style and common mistakes
+npm run typecheck      # TypeScript types (generates Next.js route types first)
+npm run test           # unit tests (Vitest)
+npm run test:coverage  # unit tests + fails if src/lib is under 90% covered
+npm run build          # production build
 ```
+
+**Automatic check before every push.** After `npm ci`, Git runs lint, the
+type check and the tests before each `git push` (`.githooks/pre-push`). If
+anything fails, the push is cancelled: fix the problem and push again.
+
+GitHub CI (`.github/workflows/ci.yml`) runs the same checks, but GitHub
+Actions is currently blocked on this account by a billing lock, so the
+pre-push check and `npm run check` are the safety net for now.
 
 ## Folder guide
 

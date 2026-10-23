@@ -24,7 +24,7 @@ jobs:
       - run: npm ci
       - run: npm run lint
       - run: npm run typecheck
-      - run: npm run test
+      - run: npm run test:coverage
       # The build needs no Supabase settings (see src/lib/supabase/server.ts).
       - run: npm run build
 
