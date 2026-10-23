@@ -1,0 +1,130 @@
+import { describe, expect, it } from "vitest";
+
+import { convertToGhs, formatMoney, MAX_AMOUNT_MINOR, parseAmount } from "./money";
+
+// Amounts are whole numbers in the smallest unit: GHS 12.50 is 1250 (M-1).
+
+describe("parseAmount", () => {
+  const ok = (minor: number) => ({ ok: true, minor });
+
+  it("reads whole and decimal amounts", () => {
+    expect(parseAmount("12")).toEqual(ok(1200));
+    expect(parseAmount("12.5")).toEqual(ok(1250));
+    expect(parseAmount("12.50")).toEqual(ok(1250));
+    expect(parseAmount("0.07")).toEqual(ok(7));
+    expect(parseAmount(".5")).toEqual(ok(50));
+    expect(parseAmount("12.")).toEqual(ok(1200));
+  });
+
+  it("accepts thousands separators and spaces around the number", () => {
+    expect(parseAmount("1,234.56")).toEqual(ok(123456));
+    expect(parseAmount("1,234,567")).toEqual(ok(123456700));
+    expect(parseAmount("  12  ")).toEqual(ok(1200));
+  });
+
+  it("never rounds what the user typed", () => {
+    expect(parseAmount("12.345")).toEqual({ ok: false, error: "Use at most 2 decimal places." });
+  });
+
+  it("rejects text that is not an amount", () => {
+    const error = "Enter an amount, for example 12.50.";
+    expect(parseAmount("")).toEqual({ ok: false, error });
+    expect(parseAmount("   ")).toEqual({ ok: false, error });
+    expect(parseAmount("abc")).toEqual({ ok: false, error });
+    expect(parseAmount("1.2.3")).toEqual({ ok: false, error });
+    expect(parseAmount("1,23")).toEqual({ ok: false, error });
+    expect(parseAmount("12,34.50")).toEqual({ ok: false, error });
+    expect(parseAmount("1e5")).toEqual({ ok: false, error });
+    expect(parseAmount(".")).toEqual({ ok: false, error });
+  });
+
+  it("rejects zero unless it is allowed", () => {
+    const error = "The amount must be more than 0.";
+    expect(parseAmount("0")).toEqual({ ok: false, error });
+    expect(parseAmount("0.00")).toEqual({ ok: false, error });
+    expect(parseAmount("0", { allowZero: true })).toEqual(ok(0));
+  });
+
+  it("rejects negative amounts unless they are allowed (D-29)", () => {
+    expect(parseAmount("-5")).toEqual({ ok: false, error: "The amount cannot be negative." });
+    expect(parseAmount("-5", { allowNegative: true })).toEqual(ok(-500));
+    // The typographic minus sign that phones sometimes insert.
+    expect(parseAmount("−5.25", { allowNegative: true })).toEqual(ok(-525));
+  });
+
+  it("turns minus zero into plain zero", () => {
+    const result = parseAmount("-0", { allowNegative: true, allowZero: true });
+    expect(result).toEqual(ok(0));
+    expect(result.ok && Object.is(result.minor, -0)).toBe(false);
+  });
+
+  it("rejects amounts above the limit", () => {
+    expect(parseAmount("999,999,999.99")).toEqual(ok(MAX_AMOUNT_MINOR));
+    expect(parseAmount("1,000,000,000")).toEqual({ ok: false, error: "The amount is too large." });
+    expect(parseAmount("-1000000000", { allowNegative: true })).toEqual({
+      ok: false,
+      error: "The amount is too large.",
+    });
+  });
+});
+
+describe("formatMoney", () => {
+  it("shows the currency, thousands separators and two decimals (M-9)", () => {
+    expect(formatMoney(123456, "GHS")).toBe("GHS 1,234.56");
+    expect(formatMoney(7, "GHS")).toBe("GHS 0.07");
+    expect(formatMoney(0, "USD")).toBe("USD 0.00");
+    expect(formatMoney(999, "USD")).toBe("USD 9.99");
+    expect(formatMoney(MAX_AMOUNT_MINOR, "GHS")).toBe("GHS 999,999,999.99");
+  });
+
+  it("puts a minus sign before negative amounts", () => {
+    expect(formatMoney(-98600, "GHS")).toBe("−GHS 986.00");
+    expect(formatMoney(-5, "USD")).toBe("−USD 0.05");
+  });
+
+  it("refuses amounts that are not whole minor units (a programming error)", () => {
+    expect(() => formatMoney(12.5, "GHS")).toThrow();
+    expect(() => formatMoney(Number.NaN, "GHS")).toThrow();
+  });
+});
+
+describe("convertToGhs (M-4: the one rounding rule)", () => {
+  it("multiplies by the rate and rounds to the nearest pesewa", () => {
+    // Netflix: USD 9.99 at 15.40 = 153.846 → GHS 153.85
+    expect(convertToGhs(999, "15.40")).toBe(15385);
+    expect(convertToGhs(100, "15.4")).toBe(1540);
+    expect(convertToGhs(12000, "15.40")).toBe(184800);
+  });
+
+  it("rounds half away from zero", () => {
+    expect(convertToGhs(1, "0.5")).toBe(1);
+    expect(convertToGhs(-1, "0.5")).toBe(-1);
+    expect(convertToGhs(1, "0.499999")).toBe(0);
+    expect(convertToGhs(3, "0.166667")).toBe(1);
+  });
+
+  it("works for negative amounts the same way", () => {
+    expect(convertToGhs(-999, "15.40")).toBe(-15385);
+  });
+
+  it("accepts the rate as a number too", () => {
+    expect(convertToGhs(999, 15.4)).toBe(15385);
+  });
+
+  it("is exact where floating-point maths is not", () => {
+    // 0.1 + 0.2 style trap: 1.005 × 100 in floats is 100.49999…
+    expect(convertToGhs(100, "1.005")).toBe(101); // 100.5 → 101
+  });
+
+  it("refuses bad input (programming errors)", () => {
+    expect(() => convertToGhs(999, "0")).toThrow();
+    expect(() => convertToGhs(999, "-1")).toThrow();
+    expect(() => convertToGhs(999, "abc")).toThrow();
+    expect(() => convertToGhs(999, "1.1234567")).toThrow();
+    expect(() => convertToGhs(9.5, "15.40")).toThrow();
+  });
+
+  it("refuses a result too large to store exactly", () => {
+    expect(() => convertToGhs(Number.MAX_SAFE_INTEGER, "2")).toThrow();
+  });
+});
