@@ -4,6 +4,8 @@ on:
   push:
     branches: [main]
   pull_request:
+  # Adds a "Run workflow" button on the Actions tab, to run CI by hand.
+  workflow_dispatch:
 
 permissions:
   contents: read
