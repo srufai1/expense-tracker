@@ -97,7 +97,7 @@ function AccountList({ accounts, muted = false }: { accounts: Account[]; muted?:
               <AccountTypeIcon type={account.type} className="size-5" />
             </span>
             <span className="flex min-w-0 flex-1 flex-col">
-              <span className={`truncate font-bold ${muted ? "text-muted-foreground" : ""}`}>{account.name}</span>
+              <span className={`line-clamp-2 font-bold break-words ${muted ? "text-muted-foreground" : ""}`}>{account.name}</span>
               <span className="text-xs text-muted-foreground">
                 {accountTypeLabel(account.type)} · {account.currency}
               </span>

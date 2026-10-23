@@ -65,7 +65,8 @@ export function AccountDangerZone({ id, name, archived }: { id: string; name: st
           <AlertDialogFooter>
             <AlertDialogCancel className="h-11">Keep it</AlertDialogCancel>
             <AlertDialogAction
-              className="h-11 bg-destructive text-white hover:bg-destructive/90"
+              variant="destructive"
+              className="h-11"
               onClick={() => startTransition(() => deleteAccount(id))}
             >
               Delete
