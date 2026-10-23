@@ -3,6 +3,7 @@
 import { BarChart3, House, LayoutGrid, List, Plus } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { Suspense } from "react";
 
 import { cn } from "@/lib/utils";
 
@@ -13,14 +14,32 @@ const items = [
   { href: "/more", label: "More", icon: LayoutGrid },
 ] as const;
 
-function isActive(pathname: string, href: string) {
+function isActive(pathname: string | null, href: string) {
+  if (pathname === null) return false;
   return href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(`${href}/`);
 }
 
 // The menu at the bottom of every signed-in page (mockup screens 1–8).
 // The round "+" button in the middle opens the Add screen.
+//
+// Highlighting the current tab needs the page address. On pages whose
+// address holds an id (e.g. /accounts/[id]) that is only known per request,
+// so the highlighted menu sits in a Suspense boundary; until it arrives the
+// same menu shows without a highlight (Cache Components rule, see the
+// usePathname docs).
 export function BottomNav() {
-  const pathname = usePathname();
+  return (
+    <Suspense fallback={<NavBar pathname={null} />}>
+      <ActiveNavBar />
+    </Suspense>
+  );
+}
+
+function ActiveNavBar() {
+  return <NavBar pathname={usePathname()} />;
+}
+
+function NavBar({ pathname }: { pathname: string | null }) {
   const [home, activity, reports, more] = items;
 
   return (
