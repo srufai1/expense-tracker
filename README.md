@@ -11,7 +11,8 @@ report every week. It installs on a phone's home screen (PWA).
 | Build step (DESIGN §11) | State |
 |---|---|
 | 1. Setup — Next.js, sign-in, app shell, PWA manifest, CI | done |
-| 2–14 | not started |
+| 2. Money core — `money.ts`, accounts, first-run setup | done |
+| 3–14 | not started |
 
 ## Stack
 
@@ -54,6 +55,29 @@ You need Node.js 22 or newer and a Supabase project.
    ```bash
    npm run dev
    ```
+
+## Database changes (migrations)
+
+Every change to the database is a file in `supabase/migrations/`, named
+`<date and time>_<what>.sql`. They are applied **in name order, once each**.
+
+To apply a new migration to your Supabase project:
+
+1. Supabase dashboard → your project → **SQL Editor** → **New query**.
+2. Open the migration file in VS Code, copy all of it, paste it into the editor.
+3. Click **Run**. It should say "Success. No rows returned".
+4. Never run the same file twice, and never edit a file that has already run:
+   a change is always a new file.
+
+Applied so far: keep a note of the last file you ran (for example in your
+password manager's notes), so you know where to continue.
+
+| File | What it adds |
+|---|---|
+| `20261023120000_accounts.sql` | the `accounts` table (build step 2) |
+
+The same files run in the tests (`supabase/tests/`), in PGlite, an in-memory
+Postgres, so the database rules are tested on every push.
 
 ## Checks
 
