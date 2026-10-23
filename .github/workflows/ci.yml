@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  # Adds a "Run workflow" button on the Actions tab, to run CI by hand.
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm run test
+      # The build needs no Supabase settings (see src/lib/supabase/server.ts).
+      - run: npm run build
+
+      # The secret key is only ever read from an environment variable.
+      # A key written into the code would be public on GitHub.
+      - name: No Supabase secret key written in the code
+        run: |
+          if grep -rnE "sb_secret_|service_role" src/; then
+            echo "Found a Supabase secret key or service_role reference under src/. Remove it."
+            exit 1
+          fi
