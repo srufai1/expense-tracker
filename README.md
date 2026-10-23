@@ -26,8 +26,14 @@ You need Node.js 22 or newer and a Supabase project.
 1. Install the packages:
 
    ```bash
-   npm install
+   npm ci
    ```
+
+   Use `npm ci`, not `npm install`, after every `git pull`. It installs
+   exactly what `package-lock.json` lists and never changes that file.
+   (`npm install` can rewrite the lockfile, for example when your npm
+   version differs from the one that made it, and then `git pull` stops
+   with "Your local changes … would be overwritten".)
 
 2. Copy the settings template and fill it in from Supabase →
    **Project Settings → API**:
