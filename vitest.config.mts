@@ -26,8 +26,10 @@ export default defineConfig({
         "src/lib/supabase/proxy.ts",
         "src/lib/supabase/env.ts",
       ],
-      // `npm run test:coverage` fails if tests cover less than this.
-      thresholds: { lines: 90, functions: 90, branches: 90, statements: 90 },
+      // `npm run test:coverage` fails if tests cover less than this, checked
+      // for each file (perFile), so one untested file cannot hide behind a
+      // high total.
+      thresholds: { lines: 90, functions: 90, branches: 90, statements: 90, perFile: true },
     },
   },
 });
