@@ -1,16 +1,9 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
+import { getRedirect } from "@/lib/route-guard";
+
 import { getSupabaseEnv } from "./env";
-
-// Pages anyone can open without signing in.
-const PUBLIC_PATHS = ["/sign-in"];
-
-function isPublicPath(pathname: string) {
-  return PUBLIC_PATHS.some(
-    (path) => pathname === path || pathname.startsWith(`${path}/`),
-  );
-}
 
 // Runs before every page request (see src/proxy.ts). It does two jobs:
 // 1. Refreshes the Supabase session cookie when it is about to expire.
@@ -49,22 +42,12 @@ export async function updateSession(request: NextRequest) {
   // Do not put any code between createServerClient and getClaims():
   // getClaims() is what refreshes an expiring session.
   const { data } = await supabase.auth.getClaims();
-  const signedIn = Boolean(data?.claims?.sub);
   const { pathname, search } = request.nextUrl;
 
-  if (!signedIn && !isPublicPath(pathname)) {
-    const signInUrl = request.nextUrl.clone();
-    signInUrl.pathname = "/sign-in";
-    signInUrl.search = "";
-    if (pathname !== "/") signInUrl.searchParams.set("next", pathname + search);
-    return redirectWithCookies(signInUrl, response, cacheHeaders);
-  }
-
-  if (signedIn && pathname === "/sign-in") {
-    const homeUrl = request.nextUrl.clone();
-    homeUrl.pathname = "/";
-    homeUrl.search = "";
-    return redirectWithCookies(homeUrl, response, cacheHeaders);
+  // The rules for who goes where live in src/lib/route-guard.ts (tested).
+  const target = getRedirect({ pathname, search, signedIn: Boolean(data?.claims?.sub) });
+  if (target) {
+    return redirectWithCookies(new URL(target, request.url), response, cacheHeaders);
   }
 
   return response;

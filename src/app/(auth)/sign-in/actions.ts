@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
+import { signInErrorMessage } from "@/lib/auth-errors";
 import { safeRedirectPath } from "@/lib/safe-redirect";
 import { createClient } from "@/lib/supabase/server";
 
@@ -42,21 +43,7 @@ export async function signIn(
   });
 
   if (error) {
-    if (error.status === 429) {
-      return { error: "Too many attempts. Wait a few minutes, then try again.", email: typedEmail };
-    }
-    // A 4xx answer means Supabase was reached and refused the details.
-    // Anything else (no answer, or a server error) is a connection problem,
-    // and saying "wrong password" then would be misleading.
-    if (!error.status || error.status >= 500) {
-      return {
-        error: "Could not reach the server. Check your internet connection and try again.",
-        email: typedEmail,
-      };
-    }
-    // One message for every refusal, so the page never reveals whether
-    // an email address has an account.
-    return { error: "That email and password do not match.", email: typedEmail };
+    return { error: signInErrorMessage(error.status), email: typedEmail };
   }
 
   redirect(safeRedirectPath(parsed.data.next));
