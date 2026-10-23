@@ -36,9 +36,27 @@ recorded as a new D-nn decision, never by silently editing an old one.
   Use short sentences, explain *why*, and say which files and lines changed.
 - Small, focused changes. One build step (DESIGN §11) per branch and pull
   request. Do not reformat or "tidy" code the task did not need.
-- Before saying something works, run `npm run lint`, `npm run typecheck`,
-  `npm run test` and `npm run build`. If you did not run them, say
-  "not verified".
+- Before saying something works, run `npm run check` (lint, type check,
+  tests with coverage, build). If you did not run it, say "not verified".
+
+## Tests
+
+GitHub CI cannot run on this account at the moment, so the laptop is the
+safety net: `git push` runs lint, the type check and the tests first
+(`.githooks/pre-push`) and is refused if any fail. Never bypass it with
+`--no-verify` to get a change through.
+
+- **Logic goes in `src/lib/` as plain functions, with tests next to them**
+  (`*.test.ts`). Pages, Server Actions and the Supabase wrappers stay thin and
+  call those functions. That is what makes the logic testable.
+- **Coverage gate:** every file in `src/lib/` must be covered (90% lines,
+  branches, functions). A new file there without tests fails
+  `npm run test:coverage`. Do not add files to the coverage `exclude` list
+  to get around this; that list is only for thin Next.js/Supabase wrappers.
+- **Money and reports are written test-first** (DESIGN §10): write the test
+  with the expected GHS amounts, see it fail, then write the code.
+- **Every bug fix comes with a test that fails without the fix.**
+- Never skip, delete or weaken a test to make a check pass.
 - Never read, print or write real secrets. `.env.example` holds variable
   names only.
 
