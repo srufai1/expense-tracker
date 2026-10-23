@@ -62,6 +62,15 @@ export function formatMoney(minor: number, currency: Currency): string {
   return minor < 0 ? `−${text}` : text;
 }
 
+// An amount as text for an input box, e.g. "8950.40" or "-1500.00": no
+// currency and no commas, so parseAmount reads it back exactly.
+export function formatAmountForInput(minor: number): string {
+  assertMinorUnits(minor);
+  const size = Math.abs(minor);
+  const text = `${Math.floor(size / 100)}.${String(size % 100).padStart(2, "0")}`;
+  return minor < 0 ? `-${text}` : text;
+}
+
 // Rates are stored with up to 6 decimals (numeric(14,6) in the database).
 const RATE_DECIMALS = 6;
 const RATE_SCALE = BigInt(10 ** RATE_DECIMALS);

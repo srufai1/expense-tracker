@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { convertToGhs, formatMoney, MAX_AMOUNT_MINOR, parseAmount } from "./money";
+import { convertToGhs, formatAmountForInput, formatMoney, MAX_AMOUNT_MINOR, parseAmount } from "./money";
 
 // Amounts are whole numbers in the smallest unit: GHS 12.50 is 1250 (M-1).
 
@@ -85,6 +85,24 @@ describe("formatMoney", () => {
   it("refuses amounts that are not whole minor units (a programming error)", () => {
     expect(() => formatMoney(12.5, "GHS")).toThrow();
     expect(() => formatMoney(Number.NaN, "GHS")).toThrow();
+  });
+});
+
+describe("formatAmountForInput", () => {
+  it("writes an amount the way a person types it, so it reads back the same", () => {
+    expect(formatAmountForInput(895040)).toBe("8950.40");
+    expect(formatAmountForInput(7)).toBe("0.07");
+    expect(formatAmountForInput(0)).toBe("0.00");
+    expect(formatAmountForInput(-150000)).toBe("-1500.00");
+  });
+
+  it("round-trips through parseAmount", () => {
+    for (const minor of [0, 7, 895040, -150000, MAX_AMOUNT_MINOR]) {
+      expect(parseAmount(formatAmountForInput(minor), { allowNegative: true, allowZero: true })).toEqual({
+        ok: true,
+        minor,
+      });
+    }
   });
 });
 
