@@ -12,7 +12,7 @@ type Row = Record<string, unknown>;
 // secret-key client it has NO Row-Level Security: it returns every user's
 // rows unless the query filters them. It applies eq / gte / lte / order /
 // limit / range like PostgREST, and records each query.
-function fakeDb(tables: Record<string, Row[]>, cap = 1000) {
+function fakeDb(tables: Record<string, Row[]>, cap = 1000, failing?: string) {
   const queries: { table: string; filters: string[] }[] = [];
   const client = {
     from(table: string) {
@@ -48,9 +48,17 @@ function fakeDb(tables: Record<string, Row[]>, cap = 1000) {
           slice = [from, Math.min(to, from + cap - 1)];
           return builder;
         },
-        maybeSingle: async () => ({ data: rows[0] ?? null, error: null }),
-        then(resolve: (value: { data: Row[]; error: null }) => void) {
-          resolve({ data: rows.slice(slice[0], slice[1] + 1), error: null });
+        // failing = "first" breaks only the one-row query (the history start).
+        maybeSingle: async () =>
+          table === failing || failing === "first"
+            ? { data: null, error: { message: "boom" } }
+            : { data: rows[0] ?? null, error: null },
+        then(resolve: (value: { data: Row[] | null; error: { message: string } | null }) => void) {
+          resolve(
+            table === failing
+              ? { data: null, error: { message: "boom" } }
+              : { data: rows.slice(slice[0], slice[1] + 1), error: null },
+          );
         },
       };
       return builder;
@@ -157,6 +165,18 @@ describe("loadReportInput", () => {
   it("has no history for a user without transactions", async () => {
     const { client } = fakeDb({ ...TABLES, transactions: [] });
     expect((await loadReportInput(client, ALICE, periodFor("week", "2026-10-19"), "2026-10-26")).historyStartsOn).toBeNull();
+  });
+
+  it.each([
+    ["categories", "categories"],
+    ["budgets", "budgets"],
+    ["goals", "goals"],
+    ["first", "the first transaction"],
+  ])("says what failed: %s", async (failing, what) => {
+    const { client } = fakeDb(TABLES, 1000, failing);
+    await expect(loadReportInput(client, ALICE, periodFor("week", "2026-10-19"), "2026-10-26")).rejects.toThrow(
+      `Could not load ${what}: boom`,
+    );
   });
 
   it("throws a database error with the table's name", async () => {
