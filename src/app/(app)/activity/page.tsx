@@ -97,6 +97,8 @@ async function ActivityList({ searchParams }: { searchParams: PageProps<"/activi
             Search notes, categories and accounts
           </label>
           <Input
+            // A new box when the address changes, so it never shows old text.
+            key={query}
             id="q"
             name="q"
             type="search"
