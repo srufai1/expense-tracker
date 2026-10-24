@@ -5,6 +5,9 @@ export const appConfig = {
   description: "Personal income and spending tracker with weekly reports.",
   // Africa/Accra is UTC+0 all year (no daylight saving).
   timeZone: "Africa/Accra",
+  // D-34: Resend's test sender. It can only email the Resend account
+  // owner's own address. Change it once a domain is verified in Resend.
+  emailFrom: "Expense Tracker <onboarding@resend.dev>",
   // DESIGN.md D-14: the week runs Monday to Sunday.
   weekStartsOn: "monday",
   // Brand colours, shared by the PWA manifest and the browser theme colour.
