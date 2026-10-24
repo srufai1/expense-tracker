@@ -23,7 +23,7 @@ export default function HomePage() {
       <Suspense fallback={<div className="h-32 rounded-2xl bg-muted" aria-hidden="true" />}>
         <BalanceCard />
       </Suspense>
-      <ComingSoon what="This week's summary" step="steps 4–10" />
+      <ComingSoon what="This week's summary" step="steps 9–10" />
     </>
   );
 }
