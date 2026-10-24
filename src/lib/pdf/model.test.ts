@@ -115,7 +115,7 @@ describe("reportPdfModel (screen 10: the same numbers as screen 5)", () => {
   });
 
   it("names custom and year reports, and their charts", () => {
-    const year = reportPdfModel({ ...report, period: periodFor("year", "2026-01-01"), chart: [] }, {
+    const year = reportPdfModel(buildReport({ ...reportInputEmpty(), period: periodFor("year", "2026-01-01") }), {
       title: "2026",
       today: "2026-10-26",
       appName: "X",
@@ -194,5 +194,28 @@ describe("reportPdfModel: a month with history, fees and a reached goal", () => 
     expect(reportPdfModel(early, { title: "28 Sep – 4 Oct 2026", today: "2026-09-30", appName: "X" }).budgets?.title).toBe(
       "Budgets · October 2026",
     );
+  });
+});
+
+describe("reportPdfModel: the same two fixes as the screen (PR #12 review)", () => {
+  it("names a long custom chart per week even when it starts on a Sunday", () => {
+    const sunday = buildReport({ ...reportInputEmpty(), period: { kind: "custom", first: "2026-07-05", last: "2026-10-24" } });
+    expect(reportPdfModel(sunday, { title: "5 Jul – 24 Oct 2026", today: "2026-10-26", appName: "X" }).chart.title).toBe(
+      "Spending per week",
+    );
+  });
+
+  it("keeps suggestions for a period with nothing recorded", () => {
+    // A quiet week, with an October budget already over.
+    const quiet = buildReport({
+      ...reportInputEmpty(),
+      period: periodFor("week", "2026-10-19"),
+      transactions: [tx("o", "2026-10-02", "expense", "eat", 20_000)],
+      budgets: [{ categoryId: "food", effectiveFrom: "2026-10-01", amountMinor: 15_000 }],
+      historyStartsOn: "2026-10-02",
+    });
+    const model = reportPdfModel(quiet, { title: "19 – 25 Oct 2026", today: "2026-10-26", appName: "X" });
+    expect(model.empty).toBe("Nothing was recorded in this week.");
+    expect(model.suggestions[0]).toBe("Food is over budget by GHS 50.00 for October.");
   });
 });

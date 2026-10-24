@@ -72,6 +72,19 @@ export function ReportDocument({ model }: { model: ReportPdfModel }) {
           </Text>
         ))}
 
+        {/* Even with nothing recorded, budget, goal and "missing days"
+            suggestions still apply (§7.4). */}
+        {model.suggestions.length > 0 ? (
+          <Section title="Suggestions">
+            {model.suggestions.map((text) => (
+              <View key={text} style={styles.suggestion}>
+                <Text style={{ width: 10, color: AMBER }}>•</Text>
+                <Text style={{ flex: 1 }}>{text}</Text>
+              </View>
+            ))}
+          </Section>
+        ) : null}
+
         {model.empty ? (
           <Text style={[styles.section, styles.muted]}>{model.empty}</Text>
         ) : (
@@ -92,17 +105,6 @@ export function ReportDocument({ model }: { model: ReportPdfModel }) {
                 ))}
               </View>
             </Section>
-
-            {model.suggestions.length > 0 ? (
-              <Section title="Suggestions">
-                {model.suggestions.map((text) => (
-                  <View key={text} style={styles.suggestion}>
-                    <Text style={{ width: 10, color: AMBER }}>•</Text>
-                    <Text style={{ flex: 1 }}>{text}</Text>
-                  </View>
-                ))}
-              </Section>
-            ) : null}
 
             <Section title="Highlights">
               {model.highlights.map(([label, value]) => (

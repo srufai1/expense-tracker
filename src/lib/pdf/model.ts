@@ -59,7 +59,6 @@ export function reportPdfModel(report: Report, meta: { title: string; today: str
     if (period.kind === "year") return MONTH_LETTERS[index];
     return report.chart.length <= 14 || index % 7 === 0 ? String(Number(first.slice(8, 10))) : "";
   };
-  const perWeek = report.chart.length > 0 && report.chart[0].first !== report.chart[0].last;
 
   const highlights: [string, string][] = [];
   if (report.mostSpentOn.length > 0) highlights.push(["Most spent on", report.mostSpentOn.join(", ")]);
@@ -95,7 +94,7 @@ export function reportPdfModel(report: Report, meta: { title: string; today: str
     empty:
       totals.spendingMinor === 0 && totals.incomeMinor === 0 ? `Nothing was recorded in this ${NOUN[period.kind]}.` : null,
     chart: {
-      title: `Spending per ${period.kind === "year" ? "month" : perWeek ? "week" : "day"}`,
+      title: `Spending per ${report.chartUnit}`,
       bars: report.chart.map((bar, index) => ({
         label: label(index, bar.first),
         heightPercent: max === 0 ? 0 : Math.round((bar.spendingMinor * 100) / max),
