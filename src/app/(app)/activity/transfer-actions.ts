@@ -70,44 +70,15 @@ export async function saveTransfer(
   redirect(`/activity?month=${parsed.value.occurredOn.slice(0, 7)}`);
 }
 
-// Deletes a transfer; its fee goes with it (ON DELETE CASCADE). Returns what
-// was deleted, so the page can offer Undo for 10 seconds (D-26).
+// Deletes a transfer with its fee and returns what was deleted, so the page
+// can offer Undo for 10 seconds (D-26). delete_transfer() locks, reads and
+// deletes in one step, so the snapshot is exactly what was deleted.
 export async function deleteTransfer(id: string): Promise<{ snapshot: TransferSnapshot } | { error: string }> {
   await requireUser();
   const supabase = await createClient();
-  const { data: fee, error: feeError } = await supabase
-    .from("transactions")
-    .select("amount_minor, amount_ghs_minor")
-    .eq("parent_transaction_id", id)
-    .maybeSingle();
-  if (feeError) return { error: CHECK_CONNECTION };
-
-  const { data, error } = await supabase
-    .from("transactions")
-    .delete()
-    .eq("id", id)
-    .eq("kind", "transfer")
-    .select("id, occurred_on, account_id, to_account_id, amount_minor, to_amount_minor, currency, fx_rate, fx_source, fx_rate_date, amount_ghs_minor, note");
+  const { data, error } = await supabase.rpc("delete_transfer", { p_id: id });
   if (error) return { error: CHECK_CONNECTION };
-  const row = data[0];
-  const snapshot = row
-    ? parseTransferSnapshot({
-        p_id: row.id,
-        p_occurred_on: row.occurred_on,
-        p_from_account_id: row.account_id,
-        p_to_account_id: row.to_account_id,
-        p_amount_minor: row.amount_minor,
-        p_to_amount_minor: row.to_amount_minor,
-        p_currency: row.currency,
-        p_fx_rate: row.fx_rate,
-        p_fx_source: row.fx_source,
-        p_fx_rate_date: row.fx_rate_date,
-        p_amount_ghs_minor: row.amount_ghs_minor,
-        p_fee_minor: fee?.amount_minor ?? null,
-        p_fee_ghs_minor: fee?.amount_ghs_minor ?? null,
-        p_note: row.note,
-      })
-    : null;
+  const snapshot = parseTransferSnapshot(data);
   if (!snapshot) return { error: "This transfer no longer exists." };
 
   refreshPages();

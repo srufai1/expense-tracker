@@ -170,3 +170,46 @@ revoke execute on function public.save_transfer(uuid, date, uuid, uuid, bigint, 
   bigint, bigint, bigint, text) from public, anon;
 grant execute on function public.save_transfer(uuid, date, uuid, uuid, bigint, bigint, text, numeric, text, date,
   bigint, bigint, bigint, text) to authenticated;
+
+-- Deletes a transfer with its fee (ON DELETE CASCADE) and returns what was
+-- deleted, in save_transfer()'s argument names, so Undo can put back
+-- exactly that (D-26). Locking the transfer first makes reading the fee and
+-- deleting one step: a save in another tab waits, instead of changing the
+-- fee in between. null (nothing deleted): not one of the user's transfers.
+create function public.delete_transfer(p_id uuid)
+returns jsonb
+language plpgsql
+set search_path = ''
+as $$
+declare
+  transfer public.transactions;
+  fee public.transactions;
+begin
+  select * into transfer from public.transactions t where t.id = p_id and t.kind = 'transfer' for update;
+  if not found then
+    return null;
+  end if;
+  select * into fee from public.transactions t where t.parent_transaction_id = p_id for update;
+  delete from public.transactions t where t.id = p_id;
+
+  return jsonb_build_object(
+    'p_id', transfer.id,
+    'p_occurred_on', transfer.occurred_on,
+    'p_from_account_id', transfer.account_id,
+    'p_to_account_id', transfer.to_account_id,
+    'p_amount_minor', transfer.amount_minor,
+    'p_to_amount_minor', transfer.to_amount_minor,
+    'p_currency', transfer.currency,
+    'p_fx_rate', transfer.fx_rate,
+    'p_fx_source', transfer.fx_source,
+    'p_fx_rate_date', transfer.fx_rate_date,
+    'p_amount_ghs_minor', transfer.amount_ghs_minor,
+    'p_fee_minor', fee.amount_minor,
+    'p_fee_ghs_minor', fee.amount_ghs_minor,
+    'p_note', transfer.note
+  );
+end;
+$$;
+
+revoke execute on function public.delete_transfer(uuid) from public, anon;
+grant execute on function public.delete_transfer(uuid) to authenticated;

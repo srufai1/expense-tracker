@@ -256,3 +256,86 @@ describe("transfer rules", () => {
     expect((await feesOf(carol, id)).map((fee) => fee.system_key)).toEqual(["fees"]);
   });
 });
+
+describe("delete_transfer (Codex review on PR #7)", () => {
+  // Reading the fee and deleting the transfer must be one step, so Undo
+  // gets back exactly what was deleted (D-26), even if another tab saves
+  // the same transfer at the same time.
+  it("deletes a transfer with its fee and returns them in save_transfer's shape", async () => {
+    const usd = await addAccount(ALICE, "Alice del USD", "USD", 50_000);
+    const ghs = await addAccount(ALICE, "Alice del GHS", "GHS", 0);
+    const id = await saveTransfer(ALICE, {
+      from: usd,
+      to: ghs,
+      amount: 10_000,
+      received: 115_000,
+      currency: "USD",
+      rate: "11.65",
+      source: "auto",
+      rateDate: "2026-10-19",
+      ghs: 116_500,
+      fee: 150,
+      feeGhs: 1_748,
+      note: "To savings",
+    });
+
+    const [{ snapshot }] = await rows<{ snapshot: Record<string, unknown> }>(
+      ALICE,
+      "select public.delete_transfer($1) as snapshot",
+      [id],
+    );
+    expect(snapshot).toEqual({
+      p_id: id,
+      p_occurred_on: "2026-10-20",
+      p_from_account_id: usd,
+      p_to_account_id: ghs,
+      p_amount_minor: 10_000,
+      p_to_amount_minor: 115_000,
+      p_currency: "USD",
+      p_fx_rate: 11.65,
+      p_fx_source: "auto",
+      p_fx_rate_date: "2026-10-19",
+      p_amount_ghs_minor: 116_500,
+      p_fee_minor: 150,
+      p_fee_ghs_minor: 1_748,
+      p_note: "To savings",
+    });
+    expect(await rows(ALICE, "select id from public.transactions where id = $1 or parent_transaction_id = $1", [id])).toEqual([]);
+    expect(await balance(ALICE, usd)).toBe(50_000);
+
+    // Undo: the snapshot goes straight back into save_transfer.
+    const s = snapshot as Record<string, unknown>;
+    await rows(ALICE, "select public.save_transfer($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)", [
+      s.p_id, s.p_occurred_on, s.p_from_account_id, s.p_to_account_id, s.p_amount_minor, s.p_to_amount_minor,
+      s.p_currency, s.p_fx_rate, s.p_fx_source, s.p_fx_rate_date, s.p_amount_ghs_minor, s.p_fee_minor,
+      s.p_fee_ghs_minor, s.p_note,
+    ]);
+    expect(await balance(ALICE, usd)).toBe(50_000 - 10_000 - 150);
+    expect((await feesOf(ALICE, id)).map((fee) => fee.amount_minor)).toEqual([150]);
+  });
+
+  it("returns a null fee for a transfer without one", async () => {
+    const a = await addAccount(ALICE, "Alice del A", "GHS", 0);
+    const b = await addAccount(ALICE, "Alice del B", "GHS", 0);
+    const id = await saveTransfer(ALICE, { from: a, to: b, amount: 100 });
+    const [{ snapshot }] = await rows<{ snapshot: Record<string, unknown> }>(
+      ALICE,
+      "select public.delete_transfer($1) as snapshot",
+      [id],
+    );
+    expect(snapshot).toMatchObject({ p_id: id, p_fee_minor: null, p_fee_ghs_minor: null });
+  });
+
+  it("returns null, deleting nothing, for anything that is not the user's own transfer", async () => {
+    const a = await addAccount(ALICE, "Alice keep A", "GHS", 0);
+    const b = await addAccount(ALICE, "Alice keep B", "GHS", 0);
+    const id = await saveTransfer(ALICE, { from: a, to: b, amount: 100, fee: 5 });
+    const [fee] = await rows<{ id: string }>(ALICE, "select id from public.transactions where parent_transaction_id = $1", [id]);
+
+    const run = async (userId: string, target: string) =>
+      (await rows<{ snapshot: unknown }>(userId, "select public.delete_transfer($1) as snapshot", [target]))[0].snapshot;
+    expect(await run(BOB, id)).toBeNull();
+    expect(await run(ALICE, fee.id)).toBeNull();
+    expect(await rows(ALICE, "select id from public.transactions where id = $1 or parent_transaction_id = $1", [id])).toHaveLength(2);
+  });
+});

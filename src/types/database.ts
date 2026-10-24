@@ -173,6 +173,9 @@ export type Database = {
         };
         Returns: string;
       };
+      // Deletes a transfer with its fee; returns save_transfer's arguments
+      // for Undo, or null when it is not the user's transfer.
+      delete_transfer: { Args: { p_id: string }; Returns: unknown };
     };
     Enums: { [_ in never]: never };
     CompositeTypes: { [_ in never]: never };
