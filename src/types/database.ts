@@ -122,6 +122,28 @@ export type Database = {
         };
         Relationships: [];
       };
+      fx_rates: {
+        Row: {
+          rate_date: string;
+          base: "GHS" | "USD";
+          quote: "GHS" | "USD";
+          // numeric arrives as a JSON number.
+          rate: number;
+          source: string;
+          fetched_at: string;
+        };
+        // Written only by the daily job with the secret key (never the app).
+        Insert: {
+          rate_date: string;
+          base: "GHS" | "USD";
+          quote: "GHS" | "USD";
+          rate: number | string;
+          source: string;
+          fetched_at?: string;
+        };
+        Update: { rate?: number | string; source?: string; fetched_at?: string };
+        Relationships: [];
+      };
     };
     Views: {
       account_balances: {
