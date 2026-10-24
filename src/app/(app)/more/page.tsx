@@ -1,4 +1,4 @@
-import { ChevronRight, Landmark, LogOut, Repeat, Tags, Target } from "lucide-react";
+import { ChevronRight, Download, Landmark, LogOut, Repeat, Tags, Target } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
@@ -65,10 +65,28 @@ export default function MorePage() {
         </Link>
       </nav>
 
-      <ComingSoon
-        what="Reports, weekly email and export"
-        step="steps 9–12"
-      />
+      <section aria-labelledby="backup" className="flex flex-col gap-2">
+        <h2 id="backup" className="px-1 text-xs font-bold tracking-wide text-muted-foreground uppercase">
+          Backup
+        </h2>
+        {/* A plain link: the file downloads instead of opening a page. */}
+        <a
+          href="/api/export.xlsx?scope=all"
+          className="flex min-h-13 items-center gap-3 rounded-2xl border bg-card px-4 py-3 font-semibold hover:bg-muted/50 focus-visible:bg-muted focus-visible:outline-none"
+        >
+          <span className="flex size-8 items-center justify-center rounded-lg bg-accent text-accent-foreground">
+            <Download className="size-4" aria-hidden="true" />
+          </span>
+          <span className="flex flex-1 flex-col">
+            Export everything (Excel)
+            <span className="text-xs font-normal text-muted-foreground">
+              Accounts, transactions, budgets, goals and recurring items. Keep a copy each month.
+            </span>
+          </span>
+        </a>
+      </section>
+
+      <ComingSoon what="The weekly email" step="step 12" />
 
       <Card>
         <CardHeader>

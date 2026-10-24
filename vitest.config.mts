@@ -7,7 +7,7 @@ export default defineConfig({
     alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) },
   },
   test: {
-    include: ["src/**/*.test.ts", "supabase/**/*.test.ts"],
+    include: ["src/**/*.test.{ts,tsx}", "supabase/**/*.test.ts"],
     environment: "node",
     // Each database test file starts an in-memory Postgres (PGlite) and runs
     // every migration in beforeAll. With several files in parallel, plus
@@ -18,9 +18,9 @@ export default defineConfig({
       provider: "v8",
       // The app's logic lives in src/lib (money, reports, rules). Every new
       // file there is measured automatically, so it cannot ship untested.
-      include: ["src/lib/**/*.ts"],
+      include: ["src/lib/**/*.{ts,tsx}"],
       exclude: [
-        "src/lib/**/*.test.ts",
+        "src/lib/**/*.test.{ts,tsx}",
         // Thin wrappers around Next.js and Supabase. They need a running
         // server and a real Supabase project, so unit tests cannot load them;
         // they are checked by the build and by hand. Keep logic out of them.
