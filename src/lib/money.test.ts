@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  divideRounded,
   convertFromGhs,
   convertToGhs,
   formatAmountForInput,
@@ -197,5 +198,20 @@ describe("isValidRate", () => {
   it("refuses a rate too large for the database column (numeric 14,6)", () => {
     expect(isValidRate("99999999.999999")).toBe(true);
     expect(isValidRate("100000000")).toBe(false);
+  });
+});
+
+describe("divideRounded (M-4, for averages and percentages)", () => {
+  it("rounds to the nearest whole number, half away from zero", () => {
+    expect(divideRounded(10, 4)).toBe(3); // 2.5 → 3
+    expect(divideRounded(9, 4)).toBe(2); // 2.25 → 2
+    expect(divideRounded(-10, 4)).toBe(-3); // -2.5 → -3
+    expect(divideRounded(62_800, 4)).toBe(15_700); // a 4-week average of GHS 628.00
+    expect(divideRounded(0, 7)).toBe(0);
+  });
+
+  it("refuses a denominator of 0 or below, and numbers that are not whole", () => {
+    expect(() => divideRounded(1, 0)).toThrow(/denominator/);
+    expect(() => divideRounded(1.5, 2)).toThrow(/whole/);
   });
 });

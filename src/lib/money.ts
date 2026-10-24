@@ -107,6 +107,16 @@ function roundDivide(numerator: bigint, denominator: bigint, caller: string): nu
   return value;
 }
 
+// The same rounding (M-4) for whole numbers: averages of amounts ("GHS
+// 628.00 over 4 weeks") and percentages (spent × 100 ÷ budget).
+export function divideRounded(numerator: number, denominator: number): number {
+  if (!Number.isSafeInteger(numerator) || !Number.isSafeInteger(denominator)) {
+    throw new Error(`divideRounded: ${numerator} ÷ ${denominator} must be whole numbers`);
+  }
+  if (denominator <= 0) throw new Error("divideRounded: the denominator must be above 0");
+  return roundDivide(BigInt(numerator), BigInt(denominator), "divideRounded");
+}
+
 // True for a rate the database can store: above 0, at most 6 decimals and
 // at most 8 digits before the point (numeric(14,6)).
 export function isValidRate(rate: string | number): boolean {
