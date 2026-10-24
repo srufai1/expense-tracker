@@ -92,11 +92,18 @@ export async function restoreTransfer(value: unknown): Promise<string | undefine
   if (!snapshot) return "This transfer could not be put back.";
 
   const supabase = await createClient();
-  const { error } = await supabase.rpc("save_transfer", snapshot);
+  const { recurring_rule_id, occurrence_date, ...args } = snapshot;
+  const { error } = await supabase.rpc("save_transfer", args);
   if (error) {
     return transferSaveError(error.code, error.message)
       ? "One of its accounts was deleted or changed, so it cannot be put back."
       : CHECK_CONNECTION;
+  }
+  // A transfer created by a recurring item gets its link back, so the daily
+  // job never creates that date twice. If the item was deleted meanwhile,
+  // the transfer simply stays without the link.
+  if (recurring_rule_id) {
+    await supabase.from("transactions").update({ recurring_rule_id, occurrence_date }).eq("id", snapshot.p_id);
   }
 
   refreshPages();

@@ -125,6 +125,9 @@ export type Database = {
           amount_ghs_minor?: number;
           account_amount_minor?: number;
           note?: string;
+          // Undo of a transfer created by a recurring item (build step 7).
+          recurring_rule_id?: string | null;
+          occurrence_date?: string | null;
         };
         Relationships: [];
       };

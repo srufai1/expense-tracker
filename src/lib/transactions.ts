@@ -220,6 +220,10 @@ const snapshotSchema = z.object({
   amount_ghs_minor: z.number().int().min(0).max(MAX_AMOUNT_MINOR),
   account_amount_minor: z.number().int().min(1).max(MAX_AMOUNT_MINOR),
   note: z.string().max(200),
+  // The recurring item that created it, so the daily job never creates the
+  // same date again after Undo (build step 7).
+  recurring_rule_id: z.uuid().nullable(),
+  occurrence_date: z.string().refine(isIsoDate).nullable(),
 });
 export type TransactionSnapshot = z.infer<typeof snapshotSchema>;
 
@@ -345,4 +349,10 @@ export function keptAccountAmount(
   accountCurrency: Currency | null,
 ): string | null {
   return typed && typed.currency === currency && typed.accountCurrency === accountCurrency ? typed.text : null;
+}
+
+// Undo of a created item when its recurring item was deleted meanwhile: the
+// link cannot come back, so the transaction is put back without it.
+export function lostRecurringLink(message: string): boolean {
+  return message.includes("recurring_rule_id_fkey") || message.includes("recurring item not found");
 }

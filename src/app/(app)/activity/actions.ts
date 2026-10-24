@@ -9,6 +9,7 @@ import { createClient } from "@/lib/supabase/server";
 import {
   ACCOUNT_NOT_FOUND,
   buildTransactionRow,
+  lostRecurringLink,
   parseSnapshot,
   parseTransactionForm,
   transactionSaveError,
@@ -23,7 +24,7 @@ const CHECK_CONNECTION = "Check your internet connection and try again.";
 
 // The columns that put a deleted transaction back exactly (Undo, D-26).
 const SNAPSHOT_COLUMNS =
-  "id, kind, occurred_on, account_id, category_id, amount_minor, currency, fx_rate, fx_source, fx_rate_date, amount_ghs_minor, account_amount_minor, note";
+  "id, kind, occurred_on, account_id, category_id, amount_minor, currency, fx_rate, fx_source, fx_rate_date, amount_ghs_minor, account_amount_minor, note, recurring_rule_id, occurrence_date";
 
 function failure(error: { code?: string; message: string }, values: Record<string, string>): TransactionFormState {
   const errors = transactionSaveError(error.code, error.message);
@@ -132,7 +133,13 @@ export async function restoreTransaction(value: unknown): Promise<string | undef
   if (!snapshot) return "This transaction could not be put back.";
 
   const supabase = await createClient();
-  const { error } = await supabase.from("transactions").insert(snapshot);
+  let { error } = await supabase.from("transactions").insert(snapshot);
+  // Its recurring item was deleted meanwhile: put it back without the link.
+  if (error && lostRecurringLink(error.message)) {
+    ({ error } = await supabase
+      .from("transactions")
+      .insert({ ...snapshot, recurring_rule_id: null, occurrence_date: null }));
+  }
   if (error) {
     // 23505: it is already back (Undo pressed twice).
     if (error.code === "23505") return undefined;

@@ -204,11 +204,17 @@ describe("parseTransferSnapshot", () => {
     p_fee_minor: 350,
     p_fee_ghs_minor: 350,
     p_note: "",
+    recurring_rule_id: null,
+    occurrence_date: null,
   };
 
   it("accepts a deleted transfer with its fee, for Undo (D-26)", () => {
     expect(parseTransferSnapshot(snapshot)).toEqual(snapshot);
     expect(parseTransferSnapshot({ ...snapshot, p_fee_minor: null, p_fee_ghs_minor: null })).not.toBeNull();
+    // A transfer created by a recurring item keeps its link (Codex review on PR #8).
+    expect(
+      parseTransferSnapshot({ ...snapshot, recurring_rule_id: "55555555-5555-4555-8555-555555555555", occurrence_date: "2026-10-25" }),
+    ).not.toBeNull();
   });
 
   it("refuses anything else", () => {

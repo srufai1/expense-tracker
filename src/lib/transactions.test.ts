@@ -10,6 +10,7 @@ import {
   keptAccountAmount,
   groupByDay,
   matchesSearch,
+  lostRecurringLink,
   parseSnapshot,
   parseTransactionForm,
   totalsInGhs,
@@ -262,7 +263,16 @@ describe("parseSnapshot", () => {
     amount_ghs_minor: 2500,
     account_amount_minor: 2500,
     note: "",
+    recurring_rule_id: null,
+    occurrence_date: null,
   };
+
+  it("keeps the recurring link of a created transaction (Codex review on PR #8)", () => {
+    const linked = { ...snapshot, recurring_rule_id: "55555555-5555-4555-8555-555555555555", occurrence_date: "2026-10-25" };
+    expect(parseSnapshot(linked)).toEqual(linked);
+    expect(parseSnapshot({ ...linked, recurring_rule_id: "nope" })).toBeNull();
+    expect(parseSnapshot({ ...linked, occurrence_date: "2026-02-30" })).toBeNull();
+  });
 
   it("accepts a deleted transaction as the database returned it", () => {
     expect(parseSnapshot(snapshot)).toEqual(snapshot);
@@ -476,5 +486,13 @@ describe("transfers in the Activity list (D-06)", () => {
     expect(involvesAccount(transfer, BANK)).toBe(true);
     expect(involvesAccount(transfer, "other")).toBe(false);
     expect(involvesAccount(item({ id: "e" }), BANK)).toBe(false);
+  });
+});
+
+describe("lostRecurringLink", () => {
+  it("is true when the recurring item behind an Undo was deleted meanwhile", () => {
+    expect(lostRecurringLink('insert or update on table "transactions" violates foreign key constraint "transactions_recurring_rule_id_fkey"')).toBe(true);
+    expect(lostRecurringLink("transactions: recurring item not found")).toBe(true);
+    expect(lostRecurringLink("transactions: account not found")).toBe(false);
   });
 });
