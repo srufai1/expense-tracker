@@ -9,6 +9,11 @@ export default defineConfig({
   test: {
     include: ["src/**/*.test.ts", "supabase/**/*.test.ts"],
     environment: "node",
+    // Each database test file starts an in-memory Postgres (PGlite) and runs
+    // every migration in beforeAll. With several files in parallel, plus
+    // coverage, on a slow laptop, that setup can pass Vitest's default 10 s.
+    // This limit is for setup hooks only; it changes no assertion.
+    hookTimeout: 60_000,
     coverage: {
       provider: "v8",
       // The app's logic lives in src/lib (money, reports, rules). Every new
