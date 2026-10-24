@@ -25,6 +25,7 @@ export default defineConfig({
         "src/lib/supabase/server.ts",
         "src/lib/supabase/proxy.ts",
         "src/lib/supabase/env.ts",
+        "src/lib/supabase/admin.ts",
       ],
       // `npm run test:coverage` fails if tests cover less than this, checked
       // for each file (perFile), so one untested file cannot hide behind a

@@ -46,3 +46,13 @@ export async function asAnon<T>(db: PGlite, fn: () => Promise<T>): Promise<T> {
     await db.exec("reset role");
   }
 }
+
+// Runs `fn` with the secret key's role (`service_role`), like the daily job.
+export async function asServiceRole<T>(db: PGlite, fn: () => Promise<T>): Promise<T> {
+  await db.exec("set role service_role");
+  try {
+    return await fn();
+  } finally {
+    await db.exec("reset role");
+  }
+}

@@ -61,6 +61,9 @@ not silently edit the old one.
 | D-32 | A category that has never been used can be **deleted**. One that has transactions (or a budget) can only be **archived**: hidden from pickers, history kept, so old reports stay correct. The system category Fees & Charges can be neither. (24 Oct 2026) |
 | D-33 | A transfer between accounts in **different currencies** (e.g. USD Cash → GHS Bank) records the **amount sent and the amount received**, as they really happened. The app shows the rate this implies; it does not calculate either amount. (24 Oct 2026) |
 | D-34 | The weekly email is sent with **Resend's test sender** for now: free, no domain needed, and it can only email the account owner's own address. A custom domain can come later. (24 Oct 2026) |
+| D-35 | **Exchange rates come from `open.er-api.com`** (answers Q-5). Tested 24 Oct 2026: it returns GHS (USD 1 = GHS 11.671489), updates once a day just after 00:00 UTC, needs no key, and asks for attribution ("Rates by Exchange Rate API"), shown next to the rate. A rate is stored under the provider's own update date. The daily job fetches it; if the service is down, M-6 applies. (24 Oct 2026) |
+| D-36 | **A GHS expense or income on a USD account**: the amount leaving (or entering) the account is suggested as GHS ÷ that date's USD rate, rounded by the same M-4 rounding, and can be corrected like any account amount (M-7). The transaction itself stays GHS with `fx_rate = 1`. Chosen during the autonomous build; to be confirmed by the developer. (24 Oct 2026) |
+| D-37 | **The total balance converts USD balances to GHS** at the latest stored rate and names that rate's date. With no stored rate, USD balances are shown separately, as before. Chosen during the autonomous build; to be confirmed by the developer. (24 Oct 2026) |
 
 ## 3. What is in version 1, and what is not
 
@@ -458,11 +461,8 @@ on tested ground:
 
 ## 12. Open questions
 
-Q-1 to Q-4 are answered: see D-24 to D-27.
-
-| # | Question | Plan |
-|---|---|---|
-| Q-5 | **Exchange-rate source.** Few free services include GHS. Before step 5, test `open.er-api.com` (free, no key, updated daily). It gives a market mid-rate, not the rate a forex bureau or MoMo gives you, which is why the rate is editable. | Test it first, and keep manual entry as the fallback. The result is recorded here as a decision. |
+Q-1 to Q-4 are answered: see D-24 to D-27. Q-5 (exchange-rate source) is
+answered by D-35. There are no open questions.
 
 ## 13. Costs and limits
 

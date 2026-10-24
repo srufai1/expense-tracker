@@ -34,9 +34,7 @@ async function NewTransaction({ searchParams }: { searchParams: PageProps<"/add"
       <section className="flex flex-col items-start gap-3 rounded-2xl border bg-card p-5">
         <h2 className="text-lg font-bold">Add an account first</h2>
         <p className="text-sm text-muted-foreground">
-          {choices.hasUsdAccounts
-            ? "Only GHS accounts can be used for now. USD comes with exchange rates (build step 5)."
-            : "A transaction needs an account: cash, bank, Mobile Money or a card."}
+          A transaction needs an account: cash, bank, Mobile Money or a card.
         </p>
         <Button asChild className="h-11">
           <Link href="/accounts/new">Add an account</Link>
@@ -45,19 +43,24 @@ async function NewTransaction({ searchParams }: { searchParams: PageProps<"/add"
     );
   }
 
+  // One account: choose it already, with its currency.
+  const only = choices.accounts.length === 1 ? choices.accounts[0] : null;
   return (
     <TransactionForm
       action={createTransaction}
       submitLabel="Save"
       categories={choices.categories}
       accounts={choices.accounts}
+      rates={choices.rates}
       initial={{
         kind: kind === "income" ? "income" : "expense",
         amount: "",
+        currency: only?.currency ?? "GHS",
         categoryId: "",
-        // One account: choose it already.
-        accountId: choices.accounts.length === 1 ? choices.accounts[0].id : "",
+        accountId: only?.id ?? "",
         occurredOn: todayInAccra(),
+        rate: "",
+        accountAmount: "",
         note: "",
       }}
     />

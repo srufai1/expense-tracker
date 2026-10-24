@@ -7,15 +7,17 @@ import { requireUser } from "@/lib/auth";
 import { formValues } from "@/lib/form-data";
 import { createClient } from "@/lib/supabase/server";
 import {
-  accountCurrencyError,
-  ghsTransactionRow,
+  ACCOUNT_NOT_FOUND,
+  buildTransactionRow,
   parseSnapshot,
   parseTransactionForm,
   transactionSaveError,
+  type TransactionRow,
   type TransactionSnapshot,
 } from "@/lib/transactions";
 
 import type { TransactionFormState } from "./form-state";
+import { getRateFor } from "./rates";
 
 const CHECK_CONNECTION = "Check your internet connection and try again.";
 
@@ -29,18 +31,28 @@ function failure(error: { code?: string; message: string }, values: Record<strin
   return errors ? { errors, values } : { errors: {}, formError: CHECK_CONNECTION, values };
 }
 
-// Only GHS accounts until exchange rates exist (build step 5). The form
-// offers only those, but this check is what counts: the account may have
-// changed since the form was opened.
-async function checkAccount(
+// Checks the form, then builds the row from the chosen account's currency
+// and the stored rate for the date (M-5, M-7, D-36). The account is read
+// here, not taken from the form: it may have changed since the form opened.
+async function prepareRow(
   supabase: Awaited<ReturnType<typeof createClient>>,
-  accountId: string,
-  values: Record<string, string>,
-): Promise<TransactionFormState | null> {
-  const { data, error } = await supabase.from("accounts").select("currency").eq("id", accountId).maybeSingle();
-  if (error) return { errors: {}, formError: CHECK_CONNECTION, values };
-  const errors = accountCurrencyError(data?.currency ?? null);
-  return errors ? { errors, values } : null;
+  formData: FormData,
+): Promise<{ row: TransactionRow } | { state: TransactionFormState }> {
+  const values = formValues(formData);
+  const parsed = parseTransactionForm(values);
+  if (!parsed.ok) return { state: { errors: parsed.errors, values } };
+
+  const { data: account, error } = await supabase
+    .from("accounts")
+    .select("currency")
+    .eq("id", parsed.value.accountId)
+    .maybeSingle();
+  if (error) return { state: { errors: {}, formError: CHECK_CONNECTION, values } };
+  if (!account) return { state: { errors: ACCOUNT_NOT_FOUND, values } };
+
+  const stored = await getRateFor(parsed.value.occurredOn);
+  const built = buildTransactionRow(parsed.value, account.currency, stored);
+  return built.ok ? { row: built.row } : { state: { errors: built.errors, values } };
 }
 
 // A transaction changes the Activity list, the balances and the totals.
@@ -55,19 +67,16 @@ export async function createTransaction(
   formData: FormData,
 ): Promise<TransactionFormState> {
   await requireUser();
-  const values = formValues(formData);
-  const parsed = parseTransactionForm(values);
-  if (!parsed.ok) return { errors: parsed.errors, values };
-
   const supabase = await createClient();
-  const refused = await checkAccount(supabase, parsed.value.accountId, values);
-  if (refused) return refused;
-  const { error } = await supabase.from("transactions").insert(ghsTransactionRow(parsed.value));
-  if (error) return failure(error, values);
+  const prepared = await prepareRow(supabase, formData);
+  if ("state" in prepared) return prepared.state;
+
+  const { error } = await supabase.from("transactions").insert(prepared.row);
+  if (error) return failure(error, formValues(formData));
 
   refreshPages();
   // Show the month of the new transaction, so it is visible straight away.
-  redirect(`/activity?month=${parsed.value.occurredOn.slice(0, 7)}`);
+  redirect(`/activity?month=${prepared.row.occurred_on.slice(0, 7)}`);
 }
 
 export async function updateTransaction(
@@ -76,23 +85,22 @@ export async function updateTransaction(
   formData: FormData,
 ): Promise<TransactionFormState> {
   await requireUser();
-  const values = formValues(formData);
-  const parsed = parseTransactionForm(values);
-  if (!parsed.ok) return { errors: parsed.errors, values };
-
   const supabase = await createClient();
-  const refused = await checkAccount(supabase, parsed.value.accountId, values);
-  if (refused) return refused;
+  const prepared = await prepareRow(supabase, formData);
+  if ("state" in prepared) return prepared.state;
+
   const { error, count } = await supabase
     .from("transactions")
-    .update(ghsTransactionRow(parsed.value), { count: "exact" })
+    .update(prepared.row, { count: "exact" })
     .eq("id", id)
     .in("kind", ["expense", "income"]);
-  if (error) return failure(error, values);
-  if (count === 0) return { errors: {}, formError: "This transaction no longer exists.", values };
+  if (error) return failure(error, formValues(formData));
+  if (count === 0) {
+    return { errors: {}, formError: "This transaction no longer exists.", values: formValues(formData) };
+  }
 
   refreshPages();
-  redirect(`/activity?month=${parsed.value.occurredOn.slice(0, 7)}`);
+  redirect(`/activity?month=${prepared.row.occurred_on.slice(0, 7)}`);
 }
 
 // Deletes at once and returns what was deleted, so the page can offer

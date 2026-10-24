@@ -77,23 +77,42 @@ const RATE_SCALE = BigInt(10 ** RATE_DECIMALS);
 const RATE_PATTERN = /^(\d+)(?:\.(\d{1,6}))?$/;
 
 // GHS value of an amount: amount × rate, rounded to the nearest pesewa,
-// half away from zero (M-4). This is the only place money is rounded.
-// `rate` is how many GHS for 1 unit of the amount's currency (M-3).
-// The maths uses BigInt (exact whole numbers), never floats.
+// half away from zero (M-4). `rate` is how many GHS for 1 unit of the
+// amount's currency (M-3). The maths uses BigInt (exact whole numbers),
+// never floats.
 export function convertToGhs(minor: number, rate: string | number): number {
   assertMinorUnits(minor);
-  const product = BigInt(minor) * parseRate(rate);
+  return roundDivide(BigInt(minor) * parseRate(rate), RATE_SCALE, "convertToGhs");
+}
 
-  const negative = product < BigInt(0);
-  const size = negative ? -product : product;
-  let result = size / RATE_SCALE; // BigInt division drops the remainder
-  if ((size % RATE_SCALE) * BigInt(2) >= RATE_SCALE) result += BigInt(1);
+// A GHS amount in USD cents: amount ÷ rate, rounded the same way (D-36).
+// Used when a GHS expense or income is paid from or into a USD account.
+export function convertFromGhs(ghsMinor: number, rate: string | number): number {
+  assertMinorUnits(ghsMinor);
+  return roundDivide(BigInt(ghsMinor) * RATE_SCALE, parseRate(rate), "convertFromGhs");
+}
+
+// The one rounding rule for money (M-4): numerator ÷ denominator, rounded
+// to the nearest whole number, half away from zero. denominator > 0.
+function roundDivide(numerator: bigint, denominator: bigint, caller: string): number {
+  const negative = numerator < BigInt(0);
+  const size = negative ? -numerator : numerator;
+  let result = size / denominator; // BigInt division drops the remainder
+  if ((size % denominator) * BigInt(2) >= denominator) result += BigInt(1);
 
   const value = Number(negative ? -result : result);
   if (!Number.isSafeInteger(value)) {
-    throw new Error(`convertToGhs: result ${value} is too large`);
+    throw new Error(`${caller}: result ${value} is too large`);
   }
   return value;
+}
+
+// True for a rate the database can store: above 0, at most 6 decimals and
+// at most 8 digits before the point (numeric(14,6)).
+export function isValidRate(rate: string | number): boolean {
+  const match = RATE_PATTERN.exec(String(rate).trim());
+  if (!match || match[1].length > 8) return false;
+  return /[1-9]/.test(match[1] + (match[2] ?? ""));
 }
 
 // The rate as a whole number of millionths: "15.40" → 15400000.

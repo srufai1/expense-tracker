@@ -29,8 +29,7 @@ export default function EditTransactionPage(props: PageProps<"/activity/[id]">) 
 async function EditTransaction({ params }: { params: PageProps<"/activity/[id]">["params"] }) {
   const { id } = await params;
   const transaction = await getTransaction(id);
-  // USD transactions are edited from build step 5, with their rate.
-  if (!transaction || transaction.currency !== "GHS") notFound();
+  if (!transaction) notFound();
 
   const choices = await getFormChoices({ accountId: transaction.accountId, categoryId: transaction.categoryId });
   const backHref = `/activity?month=${transaction.occurredOn.slice(0, 7)}`;
@@ -42,12 +41,18 @@ async function EditTransaction({ params }: { params: PageProps<"/activity/[id]">
         submitLabel="Save changes"
         categories={choices.categories}
         accounts={choices.accounts}
+        rates={choices.rates}
+        // Keep the stored rate and account amount (M-2) unless changed.
+        keepTyped
         initial={{
           kind: transaction.kind,
           amount: formatAmountForInput(transaction.amountMinor),
+          currency: transaction.currency,
           categoryId: transaction.categoryId,
           accountId: transaction.accountId,
           occurredOn: transaction.occurredOn,
+          rate: transaction.currency === "USD" ? transaction.rate : "",
+          accountAmount: formatAmountForInput(transaction.accountAmountMinor),
           note: transaction.note,
         }}
       />

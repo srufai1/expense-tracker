@@ -16,6 +16,18 @@ describe("isPublicPath", () => {
 
   it("does not match paths that only start with the same letters", () => {
     expect(isPublicPath("/sign-instead")).toBe(false);
+    expect(isPublicPath("/api/cronjob")).toBe(false);
+  });
+
+  it("lets the daily job through: it has no session and checks CRON_SECRET itself", () => {
+    expect(isPublicPath("/api/cron/daily")).toBe(true);
+    expect(isPublicPath("/api/other")).toBe(false);
+  });
+});
+
+describe("getRedirect for the daily job", () => {
+  it("never sends it to sign-in", () => {
+    expect(getRedirect({ pathname: "/api/cron/daily", search: "", signedIn: false })).toBeNull();
   });
 });
 

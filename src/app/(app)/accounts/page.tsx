@@ -5,8 +5,11 @@ import { Suspense } from "react";
 
 import { PageHeader } from "@/components/app-shell/page-header";
 import { Button } from "@/components/ui/button";
-import { accountTypeLabel, totalsByCurrency } from "@/lib/accounts";
+import { accountTypeLabel, totalInGhs, totalsByCurrency } from "@/lib/accounts";
+import { todayInAccra } from "@/lib/dates";
+import { formatRateDate } from "@/lib/fx";
 
+import { getRateFor } from "../activity/rates";
 import { AccountTypeIcon } from "./account-type-icon";
 import { getAccounts, type Account } from "./data";
 import { MoneyText } from "./money-text";
@@ -56,16 +59,27 @@ async function AccountsList() {
 
   const totals = totalsByCurrency(active);
   const hasUsd = active.some((account) => account.currency === "USD");
+  const latest = hasUsd ? await getRateFor(todayInAccra()) : null;
+  const total = totalInGhs(active, latest?.rate ?? null);
 
   return (
     <>
       <section className="flex flex-col gap-1 px-1" aria-label="Totals">
         <span className="text-xs font-bold tracking-wide text-muted-foreground uppercase">Total in GHS</span>
-        <MoneyText minor={totals.GHS} currency="GHS" className="text-3xl font-extrabold tracking-tight" />
+        <MoneyText minor={total.ghsMinor} currency="GHS" className="text-3xl font-extrabold tracking-tight" />
         {hasUsd ? (
           <span className="text-sm text-muted-foreground">
-            Plus <MoneyText minor={totals.USD} currency="USD" className="font-semibold text-foreground" /> in
-            USD accounts. Converting USD to GHS comes with exchange rates (build step 5).
+            {total.usdConverted && latest ? (
+              <>
+                Includes <MoneyText minor={totals.USD} currency="USD" className="font-semibold text-foreground" />{" "}
+                at {latest.rate} (rate from {formatRateDate(latest.rateDate)}).
+              </>
+            ) : (
+              <>
+                Plus <MoneyText minor={totals.USD} currency="USD" className="font-semibold text-foreground" /> in
+                USD accounts. No exchange rate is stored yet to convert it.
+              </>
+            )}
           </span>
         ) : null}
       </section>

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { accountDeleteError, accountSaveError, accountTypeLabel, parseAccountForm, totalsByCurrency } from "./accounts";
+import { accountDeleteError, accountSaveError, accountTypeLabel, parseAccountForm, totalInGhs, totalsByCurrency } from "./accounts";
 
 const TODAY = "2026-10-23";
 
@@ -132,5 +132,26 @@ describe("accountSaveError", () => {
   it("returns null for anything else", () => {
     expect(accountSaveError("23514", "something else")).toBeNull();
     expect(accountSaveError(undefined, "fetch failed")).toBeNull();
+  });
+});
+
+describe("totalInGhs (D-37)", () => {
+  const accounts = [
+    { currency: "GHS" as const, balanceMinor: 50000 },
+    { currency: "USD" as const, balanceMinor: 12000 },
+    { currency: "USD" as const, balanceMinor: -2001 },
+  ];
+
+  it("adds USD balances converted at the latest stored rate", () => {
+    // USD 99.99 × 11.671489 = GHS 1,167.0322 → 116703 pesewas
+    expect(totalInGhs(accounts, "11.671489")).toEqual({ ghsMinor: 50000 + 116703, usdConverted: true });
+  });
+
+  it("leaves USD out when no rate is stored", () => {
+    expect(totalInGhs(accounts, null)).toEqual({ ghsMinor: 50000, usdConverted: false });
+  });
+
+  it("needs no rate without USD accounts", () => {
+    expect(totalInGhs([{ currency: "GHS", balanceMinor: 7 }], null)).toEqual({ ghsMinor: 7, usdConverted: false });
   });
 });

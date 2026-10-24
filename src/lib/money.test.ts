@@ -1,6 +1,14 @@
 import { describe, expect, it } from "vitest";
 
-import { convertToGhs, formatAmountForInput, formatMoney, MAX_AMOUNT_MINOR, parseAmount } from "./money";
+import {
+  convertFromGhs,
+  convertToGhs,
+  formatAmountForInput,
+  formatMoney,
+  isValidRate,
+  MAX_AMOUNT_MINOR,
+  parseAmount,
+} from "./money";
 
 // Amounts are whole numbers in the smallest unit: GHS 12.50 is 1250 (M-1).
 
@@ -144,5 +152,50 @@ describe("convertToGhs (M-4: the one rounding rule)", () => {
 
   it("refuses a result too large to store exactly", () => {
     expect(() => convertToGhs(Number.MAX_SAFE_INTEGER, "2")).toThrow();
+  });
+});
+
+describe("convertFromGhs (D-36: GHS paid from a USD account)", () => {
+  it("divides by the rate and rounds to the nearest cent", () => {
+    // GHS 100.00 at 11.671489 = USD 8.567977… → USD 8.57
+    expect(convertFromGhs(10000, "11.671489")).toBe(857);
+    // GHS 154.00 at 15.40 = USD 10.00 exactly
+    expect(convertFromGhs(15400, "15.40")).toBe(1000);
+  });
+
+  it("rounds half away from zero, like convertToGhs (M-4)", () => {
+    // GHS 0.05 at 10 = USD 0.005 → 0.01
+    expect(convertFromGhs(5, "10")).toBe(1);
+    expect(convertFromGhs(-5, "10")).toBe(-1);
+    // GHS 0.04 at 10 = USD 0.004 → 0.00
+    expect(convertFromGhs(4, "10")).toBe(0);
+  });
+
+  it("refuses bad input (programming errors)", () => {
+    expect(() => convertFromGhs(100, "0")).toThrow();
+    expect(() => convertFromGhs(100, "abc")).toThrow();
+    expect(() => convertFromGhs(1.5, "10")).toThrow();
+  });
+});
+
+describe("isValidRate", () => {
+  it("accepts a positive rate with at most 6 decimals", () => {
+    expect(isValidRate("11.671489")).toBe(true);
+    expect(isValidRate("15")).toBe(true);
+    expect(isValidRate(11.67)).toBe(true);
+  });
+
+  it("refuses zero, negative, too many decimals and text", () => {
+    expect(isValidRate("0")).toBe(false);
+    expect(isValidRate("0.000000")).toBe(false);
+    expect(isValidRate("-1")).toBe(false);
+    expect(isValidRate("1.1234567")).toBe(false);
+    expect(isValidRate("abc")).toBe(false);
+    expect(isValidRate("")).toBe(false);
+  });
+
+  it("refuses a rate too large for the database column (numeric 14,6)", () => {
+    expect(isValidRate("99999999.999999")).toBe(true);
+    expect(isValidRate("100000000")).toBe(false);
   });
 });
