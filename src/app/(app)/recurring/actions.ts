@@ -28,7 +28,7 @@ function refreshPages() {
 }
 
 // Saves a new rule (id null) or changes to one. A transfer is always in the
-// sending account's currency (D-38); next_run_on starts from the start date
+// sending account's currency (D-38), a goal contribution in GHS (D-40); next_run_on starts from the start date
 // or today, whichever is later (D-39).
 export async function saveRule(
   id: string | null,
@@ -43,7 +43,7 @@ export async function saveRule(
 
   const supabase = await createClient();
   let currency = input.currency;
-  if (input.kind === "transfer") {
+  if (input.kind === "transfer" && input.accountId !== null) {
     const { data: from, error } = await supabase
       .from("accounts")
       .select("currency")
@@ -59,6 +59,7 @@ export async function saveRule(
     account_id: input.accountId,
     category_id: input.categoryId,
     to_account_id: input.toAccountId,
+    goal_id: input.goalId,
     amount_minor: input.amountMinor,
     currency,
     note: input.note,
