@@ -107,7 +107,7 @@ describe("accountTypeLabel", () => {
 
 describe("accountDeleteError", () => {
   const IN_USE =
-    "This account has transactions, so it cannot be deleted. Archive it instead: it is hidden, and its history stays.";
+    "This account has transactions or recurring items, so it cannot be deleted. Archive it instead: it is hidden, and its history stays.";
 
   it("says to archive an account that has transactions, on any Postgres version", () => {
     expect(accountDeleteError("23503")).toBe(IN_USE);

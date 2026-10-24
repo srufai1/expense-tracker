@@ -94,7 +94,7 @@ export function totalsByCurrency(
 // account (ON DELETE RESTRICT), so it can only be archived.
 export function accountDeleteError(code: string | undefined): string {
   return isStillUsed(code)
-    ? "This account has transactions, so it cannot be deleted. Archive it instead: it is hidden, and its history stays."
+    ? "This account has transactions or recurring items, so it cannot be deleted. Archive it instead: it is hidden, and its history stays."
     : "Check your internet connection and try again.";
 }
 

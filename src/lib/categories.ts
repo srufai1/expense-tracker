@@ -125,7 +125,7 @@ export function categoryDeleteError(code: string | undefined, message: string): 
     return "Fees & Charges is needed for transfer fees, so it cannot be deleted.";
   }
   if (isStillUsed(code)) {
-    return "This category is in use (it has sub-categories, transactions or budgets). Archive it instead: it is hidden, and its history stays.";
+    return "This category is in use (it has sub-categories, transactions, recurring items or budgets). Archive it instead: it is hidden, and its history stays.";
   }
   return "Check your internet connection and try again.";
 }
