@@ -1,12 +1,15 @@
 import { connection } from "next/server";
 
 import { isCronAuthorized } from "@/lib/cron";
+import { todayInAccra } from "@/lib/dates";
 import { fetchDailyRate, RATE_SOURCE } from "@/lib/fx";
 import { createAdminClient } from "@/lib/supabase/admin";
 
+import { runRecurring } from "./recurring";
+
 // The daily job (DESIGN §3), run by Vercel Cron (vercel.json). Each task is
-// safe to run twice. Tasks added in later build steps: recurring items
-// (step 7) and the Monday email (step 12).
+// safe to run twice, and a failing task does not stop the next one. Task
+// added in a later build step: the Monday email (step 12).
 export async function GET(request: Request) {
   // Always run per request, never at build time.
   await connection();
@@ -36,6 +39,10 @@ export async function GET(request: Request) {
   } else {
     results.rate = `failed: ${fetched.error}`;
   }
+
+  // 2. Recurring items due up to today, in Accra (§6.6). Runs after the
+  //    rate, so a USD item due today can use today's rate.
+  results.recurring = await runRecurring(supabase, todayInAccra());
 
   const failed = Object.values(results).some((result) => result.startsWith("failed"));
   return Response.json(results, { status: failed ? 500 : 200 });
