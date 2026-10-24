@@ -6,6 +6,7 @@ import {
   categoryOptions,
   exchangeFields,
   exchangePreview,
+  keptAccountAmount,
   groupByDay,
   matchesSearch,
   parseSnapshot,
@@ -395,5 +396,56 @@ describe("exchangePreview", () => {
     expect(exchangePreview("", "15.40", "USD", "GHS")).toEqual({ amountGhsMinor: null, accountAmountMinor: null });
     expect(exchangePreview("9.99", "", "USD", "GHS")).toEqual({ amountGhsMinor: null, accountAmountMinor: null });
     expect(exchangePreview("9.999", "15", "USD", "GHS")).toEqual({ amountGhsMinor: null, accountAmountMinor: null });
+  });
+});
+
+describe("conversion overflow (Codex review on PR #6)", () => {
+  // Each value is valid alone, but the product is too large to store or
+  // even to hold exactly in JavaScript. It must become a field error,
+  // never an exception (which would crash the form while it renders).
+  it("previews nothing instead of throwing", () => {
+    expect(exchangePreview("999999999.99", "99999999", "USD", "GHS")).toEqual({
+      amountGhsMinor: null,
+      accountAmountMinor: null,
+    });
+    expect(exchangePreview("999999999.99", "0.000001", "GHS", "USD")).toEqual({
+      amountGhsMinor: 99_999_999_999,
+      accountAmountMinor: null,
+    });
+  });
+
+  it("returns a field error from buildTransactionRow", () => {
+    const base = {
+      kind: "expense" as const,
+      categoryId: CATEGORY,
+      accountId: ACCOUNT,
+      occurredOn: "2026-10-24",
+      accountAmountMinor: null,
+      note: "",
+    };
+    expect(
+      buildTransactionRow({ ...base, amountMinor: 99_999_999_999, currency: "USD", rate: "99999999" }, "USD", null),
+    ).toEqual({ ok: false, errors: { amount: "The amount is too large." } });
+    expect(
+      buildTransactionRow({ ...base, amountMinor: 99_999_999_999, currency: "GHS", rate: "0.000001" }, "USD", null),
+    ).toEqual({ ok: false, errors: { accountAmount: "The amount is too large." } });
+  });
+});
+
+describe("keptAccountAmount (Codex review on PR #6)", () => {
+  const typed = { text: "8.57", currency: "GHS" as const, accountCurrency: "USD" as const };
+
+  it("keeps a typed account amount while the currencies stay the same", () => {
+    expect(keptAccountAmount(typed, "GHS", "USD")).toBe("8.57");
+  });
+
+  // Typed as USD 8.57 for a GHS expense on a USD account. After switching to
+  // a USD expense on a GHS account, "8.57" would be read as GHS: drop it, so
+  // the converted suggestion shows instead.
+  it("drops it when the transaction or account currency changes", () => {
+    expect(keptAccountAmount(typed, "USD", "GHS")).toBeNull();
+    expect(keptAccountAmount(typed, "USD", "USD")).toBeNull();
+    expect(keptAccountAmount(typed, "GHS", null)).toBeNull();
+    expect(keptAccountAmount(null, "GHS", "USD")).toBeNull();
   });
 });

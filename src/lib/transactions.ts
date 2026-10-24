@@ -113,6 +113,18 @@ export type TransactionRow = {
   note: string;
 };
 
+// A conversion whose result is too large to store gives null instead of
+// throwing: valid amounts times valid rates can still overflow, and an
+// exception while the form renders would crash it.
+function safeConvert(convert: () => number): number | null {
+  try {
+    const value = convert();
+    return Math.abs(value) <= MAX_AMOUNT_MINOR ? value : null;
+  } catch {
+    return null;
+  }
+}
+
 export const ACCOUNT_NOT_FOUND: TransactionFormErrors = { accountId: "Choose an account from the list." };
 
 // The database row for a transaction (M-2 to M-7). `accountCurrency` is the
@@ -138,20 +150,20 @@ export function buildTransactionRow(
     return { ok: false, errors: { rate: "Enter the exchange rate: how many GHS for 1 USD." } };
   }
 
-  const amountGhs = usd ? convertToGhs(input.amountMinor, input.rate) : input.amountMinor;
-  if (amountGhs > MAX_AMOUNT_MINOR) return { ok: false, errors: { amount: "The amount is too large." } };
+  const amountGhs = usd ? safeConvert(() => convertToGhs(input.amountMinor, input.rate)) : input.amountMinor;
+  if (amountGhs === null) return { ok: false, errors: { amount: "The amount is too large." } };
 
-  let accountAmount: number;
+  let accountAmount: number | null;
   if (accountCurrency === input.currency) accountAmount = input.amountMinor;
   else if (typedAccountAmount !== null) accountAmount = typedAccountAmount;
-  else accountAmount = usd ? amountGhs : convertFromGhs(input.amountMinor, input.rate);
+  else accountAmount = usd ? amountGhs : safeConvert(() => convertFromGhs(input.amountMinor, input.rate));
+  if (accountAmount === null) return { ok: false, errors: { accountAmount: "The amount is too large." } };
   if (accountAmount < 1) {
     return {
       ok: false,
       errors: { accountAmount: `Enter the amount in ${accountCurrency} that the account changed by.` },
     };
   }
-  if (accountAmount > MAX_AMOUNT_MINOR) return { ok: false, errors: { accountAmount: "The amount is too large." } };
 
   const auto = usd && stored !== null && sameRate(input.rate, stored.rate);
   return {
@@ -303,12 +315,27 @@ export function exchangePreview(
 ): { amountGhsMinor: number | null; accountAmountMinor: number | null } {
   const parsed = parseAmount(amount);
   if (!parsed.ok || !isValidRate(rate)) return { amountGhsMinor: null, accountAmountMinor: null };
-  const amountGhs = currency === "USD" ? convertToGhs(parsed.minor, rate) : parsed.minor;
+  const amountGhs = currency === "USD" ? safeConvert(() => convertToGhs(parsed.minor, rate)) : parsed.minor;
+  if (amountGhs === null) return { amountGhsMinor: null, accountAmountMinor: null };
   if (accountCurrency === null || accountCurrency === currency) {
     return { amountGhsMinor: amountGhs, accountAmountMinor: null };
   }
   return {
     amountGhsMinor: amountGhs,
-    accountAmountMinor: currency === "USD" ? amountGhs : convertFromGhs(parsed.minor, rate),
+    accountAmountMinor: currency === "USD" ? amountGhs : safeConvert(() => convertFromGhs(parsed.minor, rate)),
   };
+}
+
+// An account amount the user typed, with the currencies it was typed for.
+export type TypedAccountAmount = { text: string; currency: Currency; accountCurrency: Currency };
+
+// The typed account amount counts only while the transaction and account
+// currencies are the ones it was typed for. After either changes, the
+// number would be read in another currency, so the suggestion shows again.
+export function keptAccountAmount(
+  typed: TypedAccountAmount | null,
+  currency: Currency,
+  accountCurrency: Currency | null,
+): string | null {
+  return typed && typed.currency === currency && typed.accountCurrency === accountCurrency ? typed.text : null;
 }

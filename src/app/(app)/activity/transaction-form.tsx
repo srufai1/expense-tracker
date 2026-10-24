@@ -14,11 +14,13 @@ import {
   ENTRY_KINDS,
   exchangeFields,
   exchangePreview,
+  keptAccountAmount,
   parseTransactionForm,
   TRANSACTION_FIELDS,
   type CategoryOption,
   type EntryKind,
   type TransactionFormErrors,
+  type TypedAccountAmount,
 } from "@/lib/transactions";
 
 import { initialTransactionFormState, type TransactionFormState } from "./form-state";
@@ -87,9 +89,11 @@ export function TransactionForm({
   // When editing, only real stored values are kept: a GHS transaction has
   // no rate, and its account amount matters only if the currencies differ.
   const [typedRate, setTypedRate] = useState<string | null>(keepTyped && start.rate !== "" ? start.rate : null);
-  const [typedAccountAmount, setTypedAccountAmount] = useState<string | null>(() => {
+  const [typedAccountAmount, setTypedAccountAmount] = useState<TypedAccountAmount | null>(() => {
     const startAccount = accounts.find((account) => account.id === start.accountId);
-    return keepTyped && startAccount && startAccount.currency !== start.currency ? start.accountAmount : null;
+    return keepTyped && startAccount && startAccount.currency !== start.currency
+      ? { text: start.accountAmount, currency: start.currency, accountCurrency: startAccount.currency }
+      : null;
   });
 
   const accountCurrency = accounts.find((account) => account.id === accountId)?.currency ?? null;
@@ -98,7 +102,8 @@ export function TransactionForm({
   const rate = typedRate ?? picked?.rate ?? "";
   const preview = exchangePreview(amount, rate, currency, accountCurrency);
   const accountAmount =
-    typedAccountAmount ?? (preview.accountAmountMinor === null ? "" : formatAmountForInput(preview.accountAmountMinor));
+    keptAccountAmount(typedAccountAmount, currency, accountCurrency) ??
+    (preview.accountAmountMinor === null ? "" : formatAmountForInput(preview.accountAmountMinor));
   const ownRate = typedRate !== null && !(picked && sameRate(typedRate, picked.rate));
 
   const serverFailed = Boolean(state.formError) || Object.keys(state.errors).length > 0;
@@ -271,7 +276,9 @@ export function TransactionForm({
             id="accountAmount"
             name="accountAmount"
             value={accountAmount}
-            onChange={(event) => setTypedAccountAmount(event.target.value)}
+            onChange={(event) =>
+              setTypedAccountAmount({ text: event.target.value, currency, accountCurrency: accountCurrency })
+            }
             inputMode="decimal"
             placeholder="0.00"
             autoComplete="off"
