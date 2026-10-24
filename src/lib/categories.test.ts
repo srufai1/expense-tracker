@@ -118,6 +118,15 @@ describe("categorySaveError", () => {
     expect(categorySaveError("23514", "categories: a category with sub-categories cannot become a sub-category")).toEqual({
       parentId: "This category has sub-categories, so it must stay at the top level.",
     });
+    expect(
+      categorySaveError(
+        "23514",
+        "categories: moving this category would make the sub-category budgets add up to more than the category budget (2026-11)",
+      ),
+    ).toEqual({
+      parentId:
+        "This category has a budget. Under this main category, the sub-category budgets would add up to more than the main budget in 2026-11. Raise the main budget first, or choose another main category.",
+    });
     expect(categorySaveError("23514", "categories: a sub-category must have the same kind as its parent")).toEqual({
       parentId: "Choose a top-level category of the same kind.",
     });

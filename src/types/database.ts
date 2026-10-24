@@ -186,6 +186,50 @@ export type Database = {
         };
         Relationships: [];
       };
+      budgets: {
+        Row: {
+          id: string;
+          user_id: string;
+          category_id: string;
+          effective_from: string;
+          amount_minor: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: { category_id: string; effective_from: string; amount_minor: number };
+        // No delete: a budget ends with an amount of 0 (history stays).
+        Update: { amount_minor?: number };
+        Relationships: [];
+      };
+      goals: {
+        Row: {
+          id: string;
+          user_id: string;
+          name: string;
+          target_minor: number;
+          target_date: string;
+          archived_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: { name: string; target_minor: number; target_date: string };
+        Update: { name?: string; target_minor?: number; target_date?: string; archived_at?: string | null };
+        Relationships: [];
+      };
+      goal_contributions: {
+        Row: {
+          id: string;
+          user_id: string;
+          goal_id: string;
+          occurred_on: string;
+          amount_minor: number;
+          note: string;
+          created_at: string;
+        };
+        Insert: { goal_id: string; occurred_on: string; amount_minor: number; note?: string };
+        Update: Record<string, never>;
+        Relationships: [];
+      };
       fx_rates: {
         Row: {
           rate_date: string;
