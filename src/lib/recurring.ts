@@ -71,6 +71,17 @@ export function firstRunOn(schedule: Schedule, startsOn: string, today: string):
   return occurrenceOnOrAfter(schedule, startsOn > today ? startsOn : today);
 }
 
+// When an archived goal is restored (D-40): the dates that passed while it
+// was archived are skipped, as after a pause (D-39). A date due today stays
+// due, and a later next date is kept.
+export function nextRunAfterRestore(
+  rule: Schedule & { startsOn: string; nextRunOn: string },
+  today: string,
+): string {
+  const resumed = firstRunOn(rule, rule.startsOn, today);
+  return rule.nextRunOn > resumed ? rule.nextRunOn : resumed;
+}
+
 const WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 export const WEEKDAY_OPTIONS = WEEKDAYS.map((name, index) => ({ value: index + 1, name }));
 

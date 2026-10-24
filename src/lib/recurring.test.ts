@@ -4,6 +4,7 @@ import {
   describeSchedule,
   dueDates,
   firstRunOn,
+  nextRunAfterRestore,
   nextOccurrence,
   occurrenceOnOrAfter,
   parseRecurringForm,
@@ -258,6 +259,21 @@ describe("firstRunOn (D-39)", () => {
   it("never starts before today: older dates are not created automatically", () => {
     expect(firstRunOn(schedule, "2026-01-01", "2026-10-24")).toBe("2026-10-25");
     expect(firstRunOn(schedule, "2026-01-01", "2026-10-25")).toBe("2026-10-25");
+  });
+});
+
+describe("nextRunAfterRestore (D-40)", () => {
+  const rule = { ...weekly(1), startsOn: "2026-09-07" };
+
+  it("skips the dates that passed while the goal was archived", () => {
+    // Archived from 5 Oct and the job missed those Mondays: restored on Thu 22 Oct.
+    expect(nextRunAfterRestore({ ...rule, nextRunOn: "2026-10-05" }, "2026-10-22")).toBe("2026-10-26");
+    // A date due today stays due.
+    expect(nextRunAfterRestore({ ...rule, nextRunOn: "2026-10-05" }, "2026-10-26")).toBe("2026-10-26");
+  });
+
+  it("never moves a later next date back", () => {
+    expect(nextRunAfterRestore({ ...rule, nextRunOn: "2026-11-09" }, "2026-10-22")).toBe("2026-11-09");
   });
 });
 
