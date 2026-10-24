@@ -3,7 +3,14 @@ import { describe, expect, it } from "vitest";
 import type { CategoryRow } from "../categories";
 import { buildReport } from "../reports/build";
 import { periodFor } from "../reports/periods";
-import { everythingSheets, exportTransactions, money, reportSheets, type TransactionRowForExport } from "./sheets";
+import {
+  everythingSheets,
+  exportTransactions,
+  money,
+  reportSheets,
+  transactionRow,
+  type TransactionRowForExport,
+} from "./sheets";
 
 const cat = (values: Partial<CategoryRow> & { id: string; name: string }): CategoryRow => ({
   kind: "expense",
@@ -25,6 +32,8 @@ const ACCOUNTS = [
 ];
 
 const row = (values: Partial<TransactionRowForExport>): TransactionRowForExport => ({
+  // What left or entered the account: the amount itself unless corrected (M-7).
+  account_amount_minor: values.amount_minor ?? 2_500,
   id: "t",
   kind: "expense",
   occurred_on: "2026-10-20",
@@ -82,6 +91,8 @@ describe("exportTransactions", () => {
       currency: "USD",
       rate: "11.671489",
       amountGhsMinor: 11_671,
+      accountAmountMinor: 1_000,
+      accountCurrency: "USD",
       receivedMinor: null,
       receivedCurrency: null,
       note: "",
@@ -149,11 +160,11 @@ describe("reportSheets", () => {
   it("lists only the period's transactions, with GHS values", () => {
     const rows = sheet("Transactions")?.rows ?? [];
     expect(rows.map((r) => r[0])).toEqual(["2026-10-20", "2026-10-20", "2026-10-21", "2026-10-20", "2026-10-23"].sort());
-    expect(rows.find((r) => r[10] === "Waakye")).toEqual([
-      "2026-10-20", "Expense", "Food › Eating out", "Cash", "", 25, "GHS", "", 25, null, "Waakye",
+    expect(rows.find((r) => r[12] === "Waakye")).toEqual([
+      "2026-10-20", "Expense", "Food › Eating out", "Cash", "", 25, "GHS", "", 25, 25, "GHS", null, "Waakye",
     ]);
     expect(rows.find((r) => r[1] === "Transfer")).toEqual([
-      "2026-10-20", "Transfer", "", "Dollar card", "Cash", 100, "USD", "11.670000", 1167, 1150, "",
+      "2026-10-20", "Transfer", "", "Dollar card", "Cash", 100, "USD", "11.670000", 1167, 100, "USD", 1150, "",
     ]);
   });
 
@@ -260,6 +271,18 @@ describe("reportSheets and exportTransactions: other cases", () => {
     expect(summary).toContainEqual(["Change from previous period", "-20%"]);
     expect(summary).toContainEqual(["3-month average spent (GHS)", 100]);
     expect(sheets.find((s) => s.name === "Goals")?.rows).toEqual([["Phone", 10, 10, 100, "2026-12-31", null]]);
+  });
+
+  it("keeps the amount actually charged to the account when it was corrected (M-7)", () => {
+    // USD 9.99 paid from a GHS account; the bank charged GHS 153.85, not the
+    // GHS 151.85 the rate gives.
+    const [item] = exportTransactions(
+      [row({ id: "m", currency: "USD", amount_minor: 999, fx_rate: 15.2, amount_ghs_minor: 15_185, account_amount_minor: 15_385 })],
+      ACCOUNTS,
+      CATEGORIES,
+    );
+    expect(item).toMatchObject({ amountMinor: 999, currency: "USD", amountGhsMinor: 15_185, accountAmountMinor: 15_385, accountCurrency: "GHS" });
+    expect(transactionRow(item).slice(5, 11)).toEqual([9.99, "USD", "15.200000", 151.85, 153.85, "GHS"]);
   });
 
   it("keeps a row whose account is missing from the list, with an empty name", () => {

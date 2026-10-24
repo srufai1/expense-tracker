@@ -29,6 +29,9 @@ export type TransactionRowForExport = {
   currency: Currency;
   fx_rate: number;
   amount_ghs_minor: number;
+  // What actually left or entered the account, in its own currency; it can
+  // differ from the converted amount when corrected (M-7).
+  account_amount_minor: number;
   to_amount_minor: number | null;
   note: string;
 };
@@ -45,6 +48,9 @@ export type ExportTransaction = {
   // GHS for 1 USD, as stored with the row (M-2).
   rate: string;
   amountGhsMinor: number;
+  // What the account was charged (or received), in the account's currency (M-7).
+  accountAmountMinor: number;
+  accountCurrency: Currency;
   // A transfer: the amount that arrived, in the receiving account's currency.
   receivedMinor: number | null;
   receivedCurrency: Currency | null;
@@ -60,18 +66,21 @@ export function exportTransactions(
   const byId = new Map(accounts.map((account) => [account.id, account]));
   return rows
     .map((row) => {
+      const account = byId.get(row.account_id);
       const to = row.to_account_id ? byId.get(row.to_account_id) : undefined;
       return {
         id: row.id,
         occurredOn: row.occurred_on,
         kind: row.kind,
         categoryLabel: row.category_id ? categoryPath(categories, row.category_id) : "",
-        accountName: byId.get(row.account_id)?.name ?? "",
+        accountName: account?.name ?? "",
         toAccountName: to?.name ?? "",
         amountMinor: row.amount_minor,
         currency: row.currency,
         rate: row.fx_rate.toFixed(6),
         amountGhsMinor: row.amount_ghs_minor,
+        accountAmountMinor: row.account_amount_minor,
+        accountCurrency: account?.currency ?? row.currency,
         receivedMinor: row.to_amount_minor,
         receivedCurrency: row.to_amount_minor === null ? null : (to?.currency ?? row.currency),
         note: row.note,
@@ -92,6 +101,8 @@ export const TRANSACTION_COLUMNS: Column[] = [
   { header: "Currency", width: 9 },
   { header: "Rate (GHS per USD)", width: 16 },
   { header: "GHS value", width: 14, format: "money" },
+  { header: "Account amount", width: 14, format: "money" },
+  { header: "Account currency", width: 9 },
   { header: "Received", width: 14, format: "money" },
   { header: "Note", width: 30 },
 ];
@@ -107,6 +118,8 @@ export function transactionRow(t: ExportTransaction): Cell[] {
     t.currency,
     t.currency === "GHS" ? "" : t.rate,
     money(t.amountGhsMinor),
+    money(t.accountAmountMinor),
+    t.accountCurrency,
     t.receivedMinor === null ? null : money(t.receivedMinor),
     t.note,
   ];
