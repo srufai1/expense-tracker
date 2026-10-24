@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-import { parseAccountForm, type AccountInput } from "@/lib/accounts";
+import { accountDeleteError, parseAccountForm, type AccountInput } from "@/lib/accounts";
 import { requireUser } from "@/lib/auth";
 import { formValues } from "@/lib/form-data";
 import { createClient } from "@/lib/supabase/server";
@@ -96,12 +96,7 @@ export async function deleteAccount(id: string): Promise<string | undefined> {
   await requireUser();
   const supabase = await createClient();
   const { error } = await supabase.from("accounts").delete().eq("id", id);
-  if (error) {
-    // 23503: transactions still point at this account (ON DELETE RESTRICT).
-    return error.code === "23503"
-      ? "This account has transactions, so it cannot be deleted. Archive it instead: it is hidden, and its history stays."
-      : CHECK_CONNECTION;
-  }
+  if (error) return accountDeleteError(error.code);
 
   refreshAccountPages();
   redirect("/accounts");

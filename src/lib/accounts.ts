@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { isIsoDate, todayInAccra } from "./dates";
+import { isStillUsed } from "./db-errors";
 import { CURRENCIES, parseAmount, type Currency } from "./money";
 
 // DESIGN §6.1 and D-05. The database allows the same four values.
@@ -87,4 +88,12 @@ export function totalsByCurrency(
   const totals: Record<Currency, number> = { GHS: 0, USD: 0 };
   for (const account of accounts) totals[account.currency] += account.balanceMinor;
   return totals;
+}
+
+// The message when deleting an account fails. Transactions point at the
+// account (ON DELETE RESTRICT), so it can only be archived.
+export function accountDeleteError(code: string | undefined): string {
+  return isStillUsed(code)
+    ? "This account has transactions, so it cannot be deleted. Archive it instead: it is hidden, and its history stays."
+    : "Check your internet connection and try again.";
 }
