@@ -1,4 +1,4 @@
-import { formatMonth, isIsoDate, shiftMonth } from "../dates";
+import { formatMonth, isIsoDate, shiftMonth, shortDayMonth } from "../dates";
 import { addDays, customPeriod, daysBetween, periodFor, type Period } from "./periods";
 
 // The report page's address (?period=week&date=… or ?period=custom&from=…&to=…),
@@ -47,9 +47,7 @@ export function periodHref(period: Period): string {
   return `/reports?${periodQuery(period)}`;
 }
 
-// A fixed list: newer browsers write "Sept" for en-GB, older ones "Sep".
-const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-const day = (date: string) => `${Number(date.slice(8, 10))} ${MONTHS[Number(date.slice(5, 7)) - 1]}`;
+const day = shortDayMonth;
 
 // "19 – 25 Oct 2026", "28 Sep – 4 Oct 2026", "October 2026", "2026".
 export function periodTitle(period: Period): string {

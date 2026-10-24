@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { formatDate } from "./dates";
 import { isValidRate } from "./money";
 
 // Exchange rates (DESIGN §6.4, M-5, M-6, D-35). A rate is how many GHS for
@@ -20,11 +21,9 @@ export function pickRate(rates: StoredRate[], date: string): StoredRate | null {
   return best;
 }
 
-const longDate = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
-
-// "24 Oct 2026": how a rate's date is shown.
+// "24 Oct 2026": how a rate's date is shown (the app's one date format).
 export function formatRateDate(date: string): string {
-  return longDate.format(new Date(`${date}T00:00:00Z`));
+  return formatDate(date);
 }
 
 // The line under the rate field: which day's rate it is, as M-5 asks.
