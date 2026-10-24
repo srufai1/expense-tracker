@@ -9,6 +9,7 @@ import {
   averageWindows,
   budgetMonthFor,
   chartBuckets,
+  chartUnit,
   daysBetween,
   previousPeriod,
   weekday,
@@ -84,6 +85,8 @@ export type Report = {
   busiestDay: { date: string; spentMinor: number; count: number } | null;
   fees: { count: number; totalMinor: number };
   chart: (DateRange & { spendingMinor: number; incomeMinor: number })[];
+  // What one bar covers (§7.2).
+  chartUnit: "day" | "week" | "month";
   previous: { period: Period; spendingMinor: number; incomeMinor: number; spendingChangePercent: number | null };
   // null: this kind of period has no average (custom, year).
   average:
@@ -195,6 +198,7 @@ export function buildReport(input: ReportInput): Report {
       : null,
     busiestDay: busiest ? { date: busiest[0], ...busiest[1] } : null,
     fees: { count: fees.length, totalMinor: sum(fees.map((t) => t.amountGhsMinor)) },
+    chartUnit: chartUnit(period),
     chart: chartBuckets(period).map((bucket) => {
       const inBucket = rows.filter(within(bucket));
       return { ...bucket, spendingMinor: total(inBucket, "expense"), incomeMinor: total(inBucket, "income") };
