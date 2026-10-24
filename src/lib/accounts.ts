@@ -94,7 +94,7 @@ export function totalsByCurrency(
 // account (ON DELETE RESTRICT), so it can only be archived.
 export function accountDeleteError(code: string | undefined): string {
   return isStillUsed(code)
-    ? "This account has transactions, so it cannot be deleted. Archive it instead: it is hidden, and its history stays."
+    ? "This account has transactions or recurring items, so it cannot be deleted. Archive it instead: it is hidden, and its history stays."
     : "Check your internet connection and try again.";
 }
 
@@ -104,7 +104,7 @@ export function accountSaveError(code: string | undefined, message: string): Acc
   // The one unique rule is the account name.
   if (code === "23505") return { name: "You already have an account with this name." };
   if (code === "23514" && message.includes("currency of an account with transactions")) {
-    return { currency: "This account has transactions, so its currency cannot change." };
+    return { currency: "This account has transactions or a recurring transfer, so its currency cannot change." };
   }
   return null;
 }

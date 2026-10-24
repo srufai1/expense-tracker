@@ -138,11 +138,11 @@ describe("categoryDeleteError", () => {
       "Fees & Charges is needed for transfer fees, so it cannot be deleted.",
     );
     expect(categoryDeleteError("23503", "violates RESTRICT setting of foreign key constraint")).toBe(
-      "This category is in use (it has sub-categories, transactions or budgets). Archive it instead: it is hidden, and its history stays.",
+      "This category is in use (it has sub-categories, transactions, recurring items or budgets). Archive it instead: it is hidden, and its history stays.",
     );
     // Postgres 18 reports ON DELETE RESTRICT with its own code.
     expect(categoryDeleteError("23001", "violates RESTRICT setting of foreign key constraint")).toBe(
-      "This category is in use (it has sub-categories, transactions or budgets). Archive it instead: it is hidden, and its history stays.",
+      "This category is in use (it has sub-categories, transactions, recurring items or budgets). Archive it instead: it is hidden, and its history stays.",
     );
     expect(categoryDeleteError(undefined, "fetch failed")).toBe(
       "Check your internet connection and try again.",

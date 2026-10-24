@@ -188,6 +188,9 @@ const snapshotSchema = z.object({
   p_fee_minor: z.number().int().min(1).max(MAX_AMOUNT_MINOR).nullable(),
   p_fee_ghs_minor: z.number().int().min(0).max(MAX_AMOUNT_MINOR).nullable(),
   p_note: z.string().max(200),
+  // The recurring link, put back after save_transfer (build step 7).
+  recurring_rule_id: z.uuid().nullable(),
+  occurrence_date: z.string().refine(isIsoDate).nullable(),
 });
 export type TransferSnapshot = z.infer<typeof snapshotSchema>;
 

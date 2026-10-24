@@ -107,7 +107,7 @@ describe("accountTypeLabel", () => {
 
 describe("accountDeleteError", () => {
   const IN_USE =
-    "This account has transactions, so it cannot be deleted. Archive it instead: it is hidden, and its history stays.";
+    "This account has transactions or recurring items, so it cannot be deleted. Archive it instead: it is hidden, and its history stays.";
 
   it("says to archive an account that has transactions, on any Postgres version", () => {
     expect(accountDeleteError("23503")).toBe(IN_USE);
@@ -125,8 +125,8 @@ describe("accountSaveError", () => {
       name: "You already have an account with this name.",
     });
     expect(
-      accountSaveError("23514", "accounts: the currency of an account with transactions cannot change"),
-    ).toEqual({ currency: "This account has transactions, so its currency cannot change." });
+      accountSaveError("23514", "accounts: the currency of an account with transactions or recurring transfers cannot change"),
+    ).toEqual({ currency: "This account has transactions or a recurring transfer, so its currency cannot change." });
   });
 
   it("returns null for anything else", () => {

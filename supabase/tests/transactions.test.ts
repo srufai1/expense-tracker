@@ -123,9 +123,10 @@ describe("transactions: ownership (Row-Level Security)", () => {
     );
   });
 
-  // The transfer columns are opened in build step 6 (transfers.test.ts).
-  it("does not let the app set the owner, recurring or receipt columns", async () => {
-    for (const column of ["user_id", "recurring_rule_id", "receipt_path"]) {
+  // The transfer columns are opened in build step 6 (transfers.test.ts), and
+  // the recurring link in step 7 for Undo, own items only (recurring.test.ts).
+  it("does not let the app set the owner or receipt columns", async () => {
+    for (const column of ["user_id", "receipt_path"]) {
       await expect(
         one(ALICE, `insert into public.transactions (${column}) values (null)`),
       ).rejects.toThrow(/permission denied/);

@@ -90,13 +90,19 @@ export type Database = {
           created_at: string;
           updated_at: string;
         };
-        // Only the columns granted in this build step (see the migration).
+        // The columns the app and the daily job may write (see the GRANTs in
+        // the migrations; the database refuses the rest).
         Insert: {
           id?: string;
-          kind: "expense" | "income";
+          user_id?: string;
+          kind: "expense" | "income" | "transfer";
           occurred_on: string;
           account_id: string;
-          category_id: string;
+          category_id: string | null;
+          to_account_id?: string | null;
+          to_amount_minor?: number | null;
+          recurring_rule_id?: string | null;
+          occurrence_date?: string | null;
           amount_minor: number;
           currency: "GHS" | "USD";
           fx_rate?: number | string;
@@ -119,6 +125,64 @@ export type Database = {
           amount_ghs_minor?: number;
           account_amount_minor?: number;
           note?: string;
+          // Undo of a transfer created by a recurring item (build step 7).
+          recurring_rule_id?: string | null;
+          occurrence_date?: string | null;
+        };
+        Relationships: [];
+      };
+      recurring_rules: {
+        Row: {
+          id: string;
+          user_id: string;
+          kind: "expense" | "income" | "transfer";
+          account_id: string;
+          category_id: string | null;
+          to_account_id: string | null;
+          amount_minor: number;
+          currency: "GHS" | "USD";
+          note: string;
+          frequency: "weekly" | "monthly";
+          weekday: number | null;
+          day_of_month: number | null;
+          starts_on: string;
+          ends_on: string | null;
+          next_run_on: string;
+          paused: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          kind: "expense" | "income" | "transfer";
+          account_id: string;
+          category_id: string | null;
+          to_account_id: string | null;
+          amount_minor: number;
+          currency: "GHS" | "USD";
+          note?: string;
+          frequency: "weekly" | "monthly";
+          weekday: number | null;
+          day_of_month: number | null;
+          starts_on: string;
+          ends_on: string | null;
+          next_run_on: string;
+          paused?: boolean;
+        };
+        Update: {
+          kind?: "expense" | "income" | "transfer";
+          account_id?: string;
+          category_id?: string | null;
+          to_account_id?: string | null;
+          amount_minor?: number;
+          currency?: "GHS" | "USD";
+          note?: string;
+          frequency?: "weekly" | "monthly";
+          weekday?: number | null;
+          day_of_month?: number | null;
+          starts_on?: string;
+          ends_on?: string | null;
+          next_run_on?: string;
+          paused?: boolean;
         };
         Relationships: [];
       };
