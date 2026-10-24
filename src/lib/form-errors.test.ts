@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { errorList, firstInvalidField } from "./form-errors";
+import { errorDialogOpen, errorList, firstInvalidField } from "./form-errors";
 
 const ORDER = ["name", "type", "amount"] as const;
 
@@ -32,5 +32,27 @@ describe("firstInvalidField", () => {
 
   it("gives null when no field is wrong", () => {
     expect(firstInvalidField({}, ORDER)).toBeNull();
+  });
+});
+
+describe("errorDialogOpen", () => {
+  const server = { from: "server" };
+  const client = { from: "browser" };
+
+  it("opens for a failed attempt that has not been dismissed", () => {
+    expect(errorDialogOpen(server, [], 1)).toBe(true);
+  });
+
+  it("stays closed with no attempt, no messages, or once dismissed", () => {
+    expect(errorDialogOpen(null, [], 1)).toBe(false);
+    expect(errorDialogOpen(server, [], 0)).toBe(false);
+    expect(errorDialogOpen(server, [server], 1)).toBe(false);
+  });
+
+  // Codex review on PR #4: server error dismissed, then a browser-side error
+  // dismissed, then a correct save. While that save runs the form shows the
+  // old server result again; it must not pop up a second time.
+  it("does not reopen an older dismissed error after a newer one was dismissed", () => {
+    expect(errorDialogOpen(server, [server, client], 1)).toBe(false);
   });
 });

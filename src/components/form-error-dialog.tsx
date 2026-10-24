@@ -11,6 +11,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { errorDialogOpen } from "@/lib/form-errors";
 
 // The pop-up that shows why a form could not be saved (D-31).
 //
@@ -29,14 +30,14 @@ export function FormErrorDialog({
   messages: string[];
   focusSelector?: string | null;
 }) {
-  const [dismissed, setDismissed] = useState<object | null>(null);
-  const open = attempt !== null && attempt !== dismissed && messages.length > 0;
+  const [dismissed, setDismissed] = useState<object[]>([]);
+  const open = errorDialogOpen(attempt, dismissed, messages.length);
 
   return (
     <AlertDialog
       open={open}
       onOpenChange={(next) => {
-        if (!next) setDismissed(attempt);
+        if (!next && attempt) setDismissed((list) => [...list, attempt]);
       }}
     >
       <AlertDialogContent
