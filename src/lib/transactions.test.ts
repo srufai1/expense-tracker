@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import type { CategoryRow } from "./categories";
 import {
+  accountCurrencyError,
   categoryOptions,
   ghsTransactionRow,
   groupByDay,
@@ -259,5 +260,21 @@ describe("categoryOptions", () => {
     expect(categoryOptions(ROWS, "expense", "old").map((option) => option.id)).toContain("old");
     expect(categoryOptions(ROWS, "expense", "gone").map((option) => option.id)).toContain("gone");
     expect(categoryOptions(ROWS, "expense", "gone-child")).toContainEqual({ id: "gone-child", label: "Gone › Gone child" });
+  });
+});
+
+describe("accountCurrencyError", () => {
+  // Codex review on PR #5: the form only offers GHS accounts, but the Server
+  // Action must check too. A GHS amount saved on a USD account would be
+  // counted as USD cents without conversion.
+  it("allows a GHS account only, until exchange rates exist (build step 5)", () => {
+    expect(accountCurrencyError("GHS")).toBeNull();
+    expect(accountCurrencyError("USD")).toEqual({
+      accountId: "This is a USD account. USD transactions come with exchange rates (build step 5).",
+    });
+  });
+
+  it("asks for an account from the list when it does not exist", () => {
+    expect(accountCurrencyError(null)).toEqual({ accountId: "Choose an account from the list." });
   });
 });

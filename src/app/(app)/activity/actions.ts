@@ -7,6 +7,7 @@ import { requireUser } from "@/lib/auth";
 import { formValues } from "@/lib/form-data";
 import { createClient } from "@/lib/supabase/server";
 import {
+  accountCurrencyError,
   ghsTransactionRow,
   parseSnapshot,
   parseTransactionForm,
@@ -28,6 +29,20 @@ function failure(error: { code?: string; message: string }, values: Record<strin
   return errors ? { errors, values } : { errors: {}, formError: CHECK_CONNECTION, values };
 }
 
+// Only GHS accounts until exchange rates exist (build step 5). The form
+// offers only those, but this check is what counts: the account may have
+// changed since the form was opened.
+async function checkAccount(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  accountId: string,
+  values: Record<string, string>,
+): Promise<TransactionFormState | null> {
+  const { data, error } = await supabase.from("accounts").select("currency").eq("id", accountId).maybeSingle();
+  if (error) return { errors: {}, formError: CHECK_CONNECTION, values };
+  const errors = accountCurrencyError(data?.currency ?? null);
+  return errors ? { errors, values } : null;
+}
+
 // A transaction changes the Activity list, the balances and the totals.
 function refreshPages() {
   revalidatePath("/activity");
@@ -45,6 +60,8 @@ export async function createTransaction(
   if (!parsed.ok) return { errors: parsed.errors, values };
 
   const supabase = await createClient();
+  const refused = await checkAccount(supabase, parsed.value.accountId, values);
+  if (refused) return refused;
   const { error } = await supabase.from("transactions").insert(ghsTransactionRow(parsed.value));
   if (error) return failure(error, values);
 
@@ -64,6 +81,8 @@ export async function updateTransaction(
   if (!parsed.ok) return { errors: parsed.errors, values };
 
   const supabase = await createClient();
+  const refused = await checkAccount(supabase, parsed.value.accountId, values);
+  if (refused) return refused;
   const { error, count } = await supabase
     .from("transactions")
     .update(ghsTransactionRow(parsed.value), { count: "exact" })

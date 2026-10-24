@@ -79,6 +79,16 @@ export function ghsTransactionRow(input: TransactionInput) {
   };
 }
 
+const USD_NOT_YET = "This is a USD account. USD transactions come with exchange rates (build step 5).";
+
+// The Server Action checks the chosen account before saving, not only the
+// form: a GHS amount on a USD account would be counted as USD cents.
+// `currency` is null when the account does not exist (or is not yours).
+export function accountCurrencyError(currency: Currency | null): TransactionFormErrors | null {
+  if (currency === null) return { accountId: "Choose an account from the list." };
+  return currency === "GHS" ? null : { accountId: USD_NOT_YET };
+}
+
 // A database refusal on save, turned into a message for the right field.
 // null: not about the form (for example no connection).
 export function transactionSaveError(code: string | undefined, message: string): TransactionFormErrors | null {
@@ -92,7 +102,7 @@ export function transactionSaveError(code: string | undefined, message: string):
     return { categoryId: "Choose a category of the same type (expense or income)." };
   }
   if (code === "23514" && message.includes("account amount must equal")) {
-    return { accountId: "This is a USD account. USD transactions come with exchange rates (build step 5)." };
+    return { accountId: USD_NOT_YET };
   }
   return null;
 }
