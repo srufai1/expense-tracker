@@ -5,19 +5,12 @@ import { redirect } from "next/navigation";
 
 import { parseAccountForm, type AccountInput } from "@/lib/accounts";
 import { requireUser } from "@/lib/auth";
+import { formValues } from "@/lib/form-data";
 import { createClient } from "@/lib/supabase/server";
 
 import type { AccountFormState } from "./form-state";
 
-const SAVE_FAILED = "Could not save. Check your internet connection and try again.";
-
-function typedValues(formData: FormData): Record<string, string> {
-  const values: Record<string, string> = {};
-  formData.forEach((value, key) => {
-    if (typeof value === "string" && !key.startsWith("$")) values[key] = value;
-  });
-  return values;
-}
+const CHECK_CONNECTION = "Check your internet connection and try again.";
 
 function toRow(input: AccountInput) {
   return {
@@ -35,7 +28,8 @@ function failure(code: string | undefined, values: Record<string, string>): Acco
   if (code === "23505") {
     return { errors: { name: "You already have an account with this name." }, values };
   }
-  return { errors: {}, formError: SAVE_FAILED, values };
+  // Shown under the pop-up title "Could not save" (D-31).
+  return { errors: {}, formError: CHECK_CONNECTION, values };
 }
 
 function refreshAccountPages() {
@@ -48,7 +42,7 @@ export async function createAccount(
   formData: FormData,
 ): Promise<AccountFormState> {
   await requireUser();
-  const values = typedValues(formData);
+  const values = formValues(formData);
   const parsed = parseAccountForm(values);
   if (!parsed.ok) return { errors: parsed.errors, values };
 
@@ -66,7 +60,7 @@ export async function updateAccount(
   formData: FormData,
 ): Promise<AccountFormState> {
   await requireUser();
-  const values = typedValues(formData);
+  const values = formValues(formData);
   const parsed = parseAccountForm(values);
   if (!parsed.ok) return { errors: parsed.errors, values };
 
@@ -84,24 +78,30 @@ export async function updateAccount(
 }
 
 // Archived accounts disappear from pickers and totals but keep their history.
-export async function setAccountArchived(id: string, archived: boolean) {
+// Returns an error message for the pop-up, or redirects on success.
+export async function setAccountArchived(id: string, archived: boolean): Promise<string | undefined> {
   await requireUser();
   const supabase = await createClient();
   const { error } = await supabase
     .from("accounts")
     .update({ archived_at: archived ? new Date().toISOString() : null })
     .eq("id", id);
-  if (error) throw new Error(SAVE_FAILED);
+  if (error) return CHECK_CONNECTION;
 
   refreshAccountPages();
   redirect("/accounts");
 }
 
-export async function deleteAccount(id: string) {
+export async function deleteAccount(id: string): Promise<string | undefined> {
   await requireUser();
   const supabase = await createClient();
   const { error } = await supabase.from("accounts").delete().eq("id", id);
-  if (error) throw new Error(SAVE_FAILED);
+  if (error) {
+    // 23503: transactions still point at this account (ON DELETE RESTRICT).
+    return error.code === "23503"
+      ? "This account has transactions, so it cannot be deleted. Archive it instead: it is hidden, and its history stays."
+      : CHECK_CONNECTION;
+  }
 
   refreshAccountPages();
   redirect("/accounts");

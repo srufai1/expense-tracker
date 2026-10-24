@@ -3,6 +3,7 @@
 import { useSearchParams } from "next/navigation";
 import { useActionState } from "react";
 
+import { FormErrorDialog } from "@/components/form-error-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -18,6 +19,12 @@ export function SignInForm() {
 
   return (
     <form action={formAction} className="flex flex-col gap-4">
+      <FormErrorDialog
+        attempt={state.error ? state : null}
+        title="Could not sign in"
+        messages={state.error ? [state.error] : []}
+        focusSelector={state.field ? `#${state.field}` : null}
+      />
       <input type="hidden" name="next" value={next} />
 
       <div className="flex flex-col gap-2">
@@ -31,6 +38,7 @@ export function SignInForm() {
           required
           maxLength={254}
           defaultValue={state.email}
+          aria-invalid={state.field === "email"}
           className="h-12 text-base"
         />
       </div>
@@ -42,17 +50,12 @@ export function SignInForm() {
           name="password"
           type="password"
           autoComplete="current-password"
+          aria-invalid={state.field === "password"}
           required
           maxLength={128}
           className="h-12 text-base"
         />
       </div>
-
-      {state.error ? (
-        <p role="alert" className="text-sm font-medium text-destructive">
-          {state.error}
-        </p>
-      ) : null}
 
       <Button type="submit" size="lg" className="h-12 text-base" disabled={pending}>
         {pending ? "Signing in…" : "Sign in"}

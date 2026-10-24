@@ -37,9 +37,38 @@ export type Database = {
         };
         Relationships: [];
       };
+      categories: {
+        Row: {
+          id: string;
+          user_id: string;
+          kind: "expense" | "income";
+          parent_id: string | null;
+          name: string;
+          system_key: string | null;
+          sort_order: number;
+          archived_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          kind: "expense" | "income";
+          parent_id?: string | null;
+          name: string;
+          sort_order?: number;
+        };
+        Update: {
+          parent_id?: string | null;
+          name?: string;
+          sort_order?: number;
+          archived_at?: string | null;
+        };
+        Relationships: [];
+      };
     };
     Views: { [_ in never]: never };
-    Functions: { [_ in never]: never };
+    Functions: {
+      seed_starter_categories: { Args: Record<string, never>; Returns: undefined };
+    };
     Enums: { [_ in never]: never };
     CompositeTypes: { [_ in never]: never };
   };

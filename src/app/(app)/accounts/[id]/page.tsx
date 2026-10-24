@@ -3,13 +3,13 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
 import { PageHeader } from "@/components/app-shell/page-header";
+import { ArchiveDeleteZone } from "@/components/archive-delete-zone";
 import { todayInAccra } from "@/lib/dates";
 import { formatAmountForInput } from "@/lib/money";
 
 import { AccountForm } from "../account-form";
-import { updateAccount } from "../actions";
+import { deleteAccount, setAccountArchived, updateAccount } from "../actions";
 import { getAccount } from "../data";
-import { AccountDangerZone } from "./account-danger-zone";
 
 export const metadata: Metadata = { title: "Edit account" };
 
@@ -45,7 +45,15 @@ async function EditAccount({ params }: { params: PageProps<"/accounts/[id]">["pa
           openingBalanceOn: account.openingBalanceOn,
         }}
       />
-      <AccountDangerZone id={account.id} name={account.name} archived={account.archived} />
+      <ArchiveDeleteZone
+        thing="account"
+        name={account.name}
+        archived={account.archived}
+        onArchive={setAccountArchived.bind(null, account.id)}
+        onDelete={deleteAccount.bind(null, account.id)}
+        archiveHint="Hides the account from lists and totals. Its history stays."
+        unarchiveHint="Shows the account in lists and totals again."
+      />
     </>
   );
 }
