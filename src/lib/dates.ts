@@ -50,12 +50,21 @@ export function formatMonth(month: string): string {
   return monthName.format(new Date(`${month}-01T00:00:00Z`));
 }
 
-const weekdayDayMonth = new Intl.DateTimeFormat("en-GB", {
-  weekday: "short",
-  day: "numeric",
-  month: "short",
-  timeZone: "UTC",
-});
+// Fixed names, not Intl: newer devices write "Sept" in en-GB and older ones
+// "Sep", so the same date could look different on the phone, the server,
+// the PDF and the email.
+const SHORT_MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const SHORT_WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+// "15 Sep".
+export function shortDayMonth(date: string): string {
+  return `${Number(date.slice(8, 10))} ${SHORT_MONTHS[Number(date.slice(5, 7)) - 1]}`;
+}
+
+// "15 Sep 2026".
+export function formatDate(date: string): string {
+  return `${shortDayMonth(date)} ${date.slice(0, 4)}`;
+}
 
 // "Today", "Yesterday", "Tue 20 Oct", or "Mon 20 Oct 2025" in another year.
 export function dayLabel(date: string, today: string): string {
@@ -63,7 +72,6 @@ export function dayLabel(date: string, today: string): string {
   const yesterday = new Date(`${today}T00:00:00Z`);
   yesterday.setUTCDate(yesterday.getUTCDate() - 1);
   if (date === yesterday.toISOString().slice(0, 10)) return "Yesterday";
-  // en-GB writes "Tue 20 Oct" (some versions add a comma after the weekday).
-  const label = weekdayDayMonth.format(new Date(`${date}T00:00:00Z`)).replace(",", "");
+  const label = `${SHORT_WEEKDAYS[new Date(`${date}T00:00:00Z`).getUTCDay()]} ${shortDayMonth(date)}`;
   return date.slice(0, 4) === today.slice(0, 4) ? label : `${label} ${date.slice(0, 4)}`;
 }

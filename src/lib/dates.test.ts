@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { dayLabel, formatMonth, isIsoDate, monthBounds, monthFromParam, shiftMonth, todayInAccra } from "./dates";
+import { dayLabel, formatDate, formatMonth, isIsoDate, monthBounds, monthFromParam, shiftMonth, todayInAccra } from "./dates";
 
 describe("todayInAccra", () => {
   it("gives the date in Accra as YYYY-MM-DD", () => {
@@ -72,5 +72,13 @@ describe("dayLabel", () => {
 
   it("adds the year when it is not this year", () => {
     expect(dayLabel("2025-10-20", "2026-10-24")).toBe("Mon 20 Oct 2025");
+  });
+
+  it("writes every month the same short way on every device (never \"Sept\")", () => {
+    expect(dayLabel("2026-09-15", "2026-10-24")).toBe("Tue 15 Sep");
+    expect(dayLabel("2026-06-01", "2026-10-24")).toBe("Mon 1 Jun");
+    expect(dayLabel("2026-10-25", "2026-10-24")).toBe("Sun 25 Oct");
+    expect(formatDate("2026-09-15")).toBe("15 Sep 2026");
+    expect(formatDate("2027-03-31")).toBe("31 Mar 2027");
   });
 });
