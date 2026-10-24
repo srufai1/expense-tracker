@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, Plus, Search } from "lucide-react";
+import { ArrowLeftRight, ChevronLeft, ChevronRight, Plus, Search } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { requireUser } from "@/lib/auth";
 import { dayLabel, formatMonth, monthBounds, monthFromParam, shiftMonth, todayInAccra } from "@/lib/dates";
 import { formatMoney } from "@/lib/money";
-import { groupByDay, matchesSearch, totalsInGhs, type ActivityItem } from "@/lib/transactions";
+import { groupByDay, involvesAccount, matchesSearch, totalsInGhs, type ActivityItem } from "@/lib/transactions";
 import { cn } from "@/lib/utils";
 
 import { getAccounts } from "../accounts/data";
@@ -59,7 +59,7 @@ async function ActivityList({ searchParams }: { searchParams: PageProps<"/activi
     getCategories(),
   ]);
   const items = toActivityItems(rows, accounts, categories).filter(
-    (item) => (!accountFilter || item.accountId === accountFilter) && matchesSearch(item, query),
+    (item) => (!accountFilter || involvesAccount(item, accountFilter)) && matchesSearch(item, query),
   );
   const totals = totalsInGhs(items);
   const filtered = query !== "" || accountFilter !== "";
@@ -168,6 +168,7 @@ function Total({ label, minor }: { label: string; minor: number }) {
 }
 
 function ActivityRow({ item }: { item: ActivityItem }) {
+  if (item.transfer) return <TransferRow item={item} transfer={item.transfer} />;
   const income = item.kind === "income";
   return (
     <Link
@@ -186,6 +187,34 @@ function ActivityRow({ item }: { item: ActivityItem }) {
         <span className="sr-only">{income ? "Income" : "Expense"} </span>
         {income ? "+" : "−"}
         {formatMoney(item.amountMinor, item.currency)}
+      </span>
+    </Link>
+  );
+}
+
+// A transfer is neither income nor spending (D-06), so it has no sign.
+function TransferRow({ item, transfer }: { item: ActivityItem; transfer: NonNullable<ActivityItem["transfer"]> }) {
+  const twoCurrencies = transfer.toCurrency !== item.currency;
+  return (
+    <Link
+      href={`/activity/${item.id}`}
+      className="flex min-h-16 items-center gap-3 px-4 py-3 hover:bg-muted/50 focus-visible:bg-muted focus-visible:outline-none"
+    >
+      <ArrowLeftRight className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+      <span className="flex min-w-0 flex-1 flex-col">
+        <span className="font-semibold break-words">
+          <span className="sr-only">Transfer: </span>
+          {item.accountName} → {transfer.toAccountName}
+        </span>
+        {item.note ? <span className="text-xs break-words text-muted-foreground">{item.note}</span> : null}
+      </span>
+      <span className="flex shrink-0 flex-col items-end font-bold tabular-nums">
+        {formatMoney(item.amountMinor, item.currency)}
+        {twoCurrencies ? (
+          <span className="text-xs font-semibold text-muted-foreground">
+            → {formatMoney(transfer.receivedMinor, transfer.toCurrency)}
+          </span>
+        ) : null}
       </span>
     </Link>
   );
