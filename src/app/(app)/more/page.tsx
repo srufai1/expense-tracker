@@ -86,7 +86,7 @@ export default function MorePage() {
         </a>
       </section>
 
-      <ComingSoon what="The weekly email settings" step="step 12" />
+      <ComingSoon what="The weekly email" step="step 12" />
 
       <Card>
         <CardHeader>
