@@ -125,8 +125,8 @@ describe("accountSaveError", () => {
       name: "You already have an account with this name.",
     });
     expect(
-      accountSaveError("23514", "accounts: the currency of an account with transactions cannot change"),
-    ).toEqual({ currency: "This account has transactions, so its currency cannot change." });
+      accountSaveError("23514", "accounts: the currency of an account with transactions or recurring transfers cannot change"),
+    ).toEqual({ currency: "This account has transactions or a recurring transfer, so its currency cannot change." });
   });
 
   it("returns null for anything else", () => {

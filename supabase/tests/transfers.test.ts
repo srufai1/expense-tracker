@@ -299,6 +299,9 @@ describe("delete_transfer (Codex review on PR #7)", () => {
       p_fee_minor: 150,
       p_fee_ghs_minor: 1_748,
       p_note: "To savings",
+      // The recurring link, for Undo (build step 7); none here.
+      recurring_rule_id: null,
+      occurrence_date: null,
     });
     expect(await rows(ALICE, "select id from public.transactions where id = $1 or parent_transaction_id = $1", [id])).toEqual([]);
     expect(await balance(ALICE, usd)).toBe(50_000);

@@ -104,7 +104,7 @@ export function accountSaveError(code: string | undefined, message: string): Acc
   // The one unique rule is the account name.
   if (code === "23505") return { name: "You already have an account with this name." };
   if (code === "23514" && message.includes("currency of an account with transactions")) {
-    return { currency: "This account has transactions, so its currency cannot change." };
+    return { currency: "This account has transactions or a recurring transfer, so its currency cannot change." };
   }
   return null;
 }

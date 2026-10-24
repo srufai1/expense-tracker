@@ -152,3 +152,96 @@ grant insert (user_id, kind, occurred_on, account_id, category_id, amount_minor,
               fx_rate_date, amount_ghs_minor, account_amount_minor, to_account_id, to_amount_minor,
               recurring_rule_id, occurrence_date, note)
   on public.transactions to service_role;
+
+-- Codex review on PR #8 ---------------------------------------------------
+
+-- A transaction may only point to the user's own recurring item. Without
+-- this, another user could take (rule, date) and stop the item being
+-- created that day. Runs with the caller's rights: a rule that is not
+-- yours is "not found". (The daily job bypasses RLS and is checked by
+-- user_id.)
+create function public.transactions_check_recurring()
+returns trigger
+language plpgsql
+set search_path = ''
+as $$
+begin
+  if new.recurring_rule_id is not null and not exists (
+    select 1 from public.recurring_rules r where r.id = new.recurring_rule_id and r.user_id = new.user_id
+  ) then
+    raise exception 'transactions: recurring item not found' using errcode = '23503';
+  end if;
+  return new;
+end;
+$$;
+
+create trigger transactions_check_recurring
+  before insert or update of recurring_rule_id on public.transactions
+  for each row execute function public.transactions_check_recurring();
+
+-- Undo (D-26) puts a created transaction back with its link, so the daily
+-- job still sees that date as done and never creates it twice.
+grant insert (recurring_rule_id, occurrence_date) on public.transactions to authenticated;
+grant update (recurring_rule_id, occurrence_date) on public.transactions to authenticated;
+
+-- D-38 stays true after account edits: an account used by a recurring
+-- transfer keeps its currency, like one with transactions. (An expense or
+-- income rule converts, M-7 and D-36, so it does not lock the currency.)
+create or replace function public.accounts_lock_currency()
+returns trigger
+language plpgsql
+set search_path = ''
+as $$
+begin
+  if new.currency <> old.currency and (
+    exists (select 1 from public.transactions t where t.account_id = old.id or t.to_account_id = old.id)
+    or exists (
+      select 1 from public.recurring_rules r
+      where r.kind = 'transfer' and (r.account_id = old.id or r.to_account_id = old.id)
+    )
+  ) then
+    raise exception 'accounts: the currency of an account with transactions or recurring transfers cannot change'
+      using errcode = '23514';
+  end if;
+  return new;
+end;
+$$;
+
+-- delete_transfer() also returns the recurring link, so Undo can put a
+-- created transfer back with it.
+create or replace function public.delete_transfer(p_id uuid)
+returns jsonb
+language plpgsql
+set search_path = ''
+as $$
+declare
+  transfer public.transactions;
+  fee public.transactions;
+begin
+  select * into transfer from public.transactions t where t.id = p_id and t.kind = 'transfer' for update;
+  if not found then
+    return null;
+  end if;
+  select * into fee from public.transactions t where t.parent_transaction_id = p_id for update;
+  delete from public.transactions t where t.id = p_id;
+
+  return jsonb_build_object(
+    'p_id', transfer.id,
+    'p_occurred_on', transfer.occurred_on,
+    'p_from_account_id', transfer.account_id,
+    'p_to_account_id', transfer.to_account_id,
+    'p_amount_minor', transfer.amount_minor,
+    'p_to_amount_minor', transfer.to_amount_minor,
+    'p_currency', transfer.currency,
+    'p_fx_rate', transfer.fx_rate,
+    'p_fx_source', transfer.fx_source,
+    'p_fx_rate_date', transfer.fx_rate_date,
+    'p_amount_ghs_minor', transfer.amount_ghs_minor,
+    'p_fee_minor', fee.amount_minor,
+    'p_fee_ghs_minor', fee.amount_ghs_minor,
+    'p_note', transfer.note,
+    'recurring_rule_id', transfer.recurring_rule_id,
+    'occurrence_date', transfer.occurrence_date
+  );
+end;
+$$;
