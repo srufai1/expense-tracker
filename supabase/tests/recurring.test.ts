@@ -125,7 +125,7 @@ describe("recurring_rules: ownership and shape", () => {
     );
     await expect(addRule(ALICE, { account, category: food, amount: 0 })).rejects.toThrow(/recurring_rules_amount_range/);
     await expect(addRule(ALICE, { account, category: salary })).rejects.toThrow(/category kind must match/);
-    await expect(addRule(ALICE, { account, category: null })).rejects.toThrow(/recurring_rules_transfer_shape/);
+    await expect(addRule(ALICE, { account, category: null })).rejects.toThrow(/recurring_rules_shape/);
   });
 
   it("allows a recurring transfer only between accounts in one currency (D-38)", async () => {
