@@ -22,6 +22,7 @@ import {
   checkShrunkSize,
   RECEIPT_BUCKET,
   RECEIPT_JPEG_QUALITY,
+  RECEIPT_URL_SECONDS,
   receiptPath,
   scaledSize,
 } from "@/lib/receipts";
@@ -67,6 +68,23 @@ export function ReceiptCard({
     });
   }
 
+  // The page's signed link lasts only a few minutes, so opening the full
+  // photo signs a fresh one. The tab opens at once (a tab opened after a
+  // network call is often blocked), then gets the link.
+  async function openFullSize() {
+    const tab = window.open("", "_blank");
+    const { data, error } = await createClient()
+      .storage.from(RECEIPT_BUCKET)
+      .createSignedUrl(receiptPath(userId, transactionId), RECEIPT_URL_SECONDS);
+    if (error || !tab) {
+      tab?.close();
+      setFailure({ message: "The photo could not be opened. Check your internet connection and try again." });
+      return;
+    }
+    tab.opener = null;
+    tab.location.href = data.signedUrl;
+  }
+
   function remove() {
     startTransition(async () => {
       const message = await onRemove();
@@ -82,8 +100,18 @@ export function ReceiptCard({
         Receipt
       </h2>
       {url ? (
-        // A signed link that expires after a few minutes; the photo is never public.
-        <a href={url} target="_blank" rel="noreferrer" className="block overflow-hidden rounded-xl border">
+        // A signed link that expires after a few minutes; the photo is never
+        // public. Tapping it signs a fresh link (see openFullSize).
+        <a
+          href={url}
+          target="_blank"
+          rel="noreferrer"
+          className="block overflow-hidden rounded-xl border"
+          onClick={(event) => {
+            event.preventDefault();
+            void openFullSize();
+          }}
+        >
           {/* eslint-disable-next-line @next/next/no-img-element -- a short-lived signed URL, not an optimisable asset */}
           <img src={url} alt="Receipt photo (opens full size)" className="max-h-72 w-full bg-muted object-contain" />
         </a>
