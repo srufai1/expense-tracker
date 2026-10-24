@@ -8,11 +8,22 @@ report every week. It installs on a phone's home screen (PWA).
 
 ## Status
 
-| Build step (DESIGN §11) | State |
+All 14 build steps (DESIGN §11) are built and merged. Manual testing on a
+real phone and the real Supabase project comes next. Decisions D-36 to
+D-43 in `docs/DESIGN.md` were made while building and still need the
+developer's confirmation.
+
+| Build step | What it gives you |
 |---|---|
-| 1. Setup — Next.js, sign-in, app shell, PWA manifest, CI | done |
-| 2. Money core — `money.ts`, accounts, first-run setup | done |
-| 3–14 | not started |
+| 1–2 | sign-in, accounts with opening balances, first-run setup |
+| 3–4 | categories (two levels), expenses and income, Activity |
+| 5–6 | USD with daily exchange rates; transfers with fees |
+| 7–8 | recurring items (daily job); monthly budgets and savings goals |
+| 9–10 | the report engine; Reports (week, month, custom, year) and Home |
+| 11 | PDF and Excel downloads; "Export everything" backup |
+| 12 | the Monday email with the PDF attached |
+| 13 | receipt photos |
+| 14 | polish: one date format, dark mode and 360 px checks |
 
 ## Stack
 
@@ -88,6 +99,41 @@ password manager's notes), so you know where to continue.
 
 The same files run in the tests (`supabase/tests/`), in PGlite, an in-memory
 Postgres, so the database rules are tested on every push.
+
+## Put it online (Vercel)
+
+1. **Supabase:** run every migration in the table above, in order (SQL
+   Editor). The receipts migration also creates the private photo bucket.
+2. **Vercel:** New Project → import this GitHub repository → Deploy.
+3. **Environment variables** (Vercel → Project → Settings → Environment
+   Variables). Names only are in `.env.example`; never commit the values.
+
+   | Name | Where to find it | Used by |
+   |---|---|---|
+   | `NEXT_PUBLIC_SUPABASE_URL` | Supabase → Project Settings → API | the whole app |
+   | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Supabase → Project Settings → API keys | the whole app |
+   | `SUPABASE_SECRET_KEY` | Supabase → Project Settings → API keys → Secret key | the daily job only |
+   | `CRON_SECRET` | make one: `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` | the daily job only |
+   | `RESEND_API_KEY` | Resend → API Keys (Sending access) | the Monday email only |
+
+   After adding them, redeploy (Deployments → ⋯ → Redeploy).
+4. **Supabase Auth URL:** Authentication → URL Configuration → Site URL =
+   your Vercel address (for example `https://expense-tracker-xyz.vercel.app`).
+5. **The daily job** (`vercel.json`) runs once a day around 07:00 (UTC, the
+   same as Accra). It fetches the exchange rate, creates recurring items and
+   sends the Monday email. To run it by hand once:
+
+   ```bash
+   curl -H "Authorization: Bearer <your CRON_SECRET>" https://<your-app>.vercel.app/api/cron/daily
+   ```
+
+   It answers with what each task did, for example `{"rate": "saved …",
+   "recurring": "nothing due", "email": "nothing to send for …"}`.
+6. **Resend** (D-34): sign up with the **same email address you use to sign
+   in to the app**. The test sender (`onboarding@resend.dev`) can only send
+   to that address.
+7. **Backup:** the free Supabase plan has no automatic backups. Download
+   More → **Export everything (Excel)** once a month.
 
 ## Checks
 
