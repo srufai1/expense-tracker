@@ -2,9 +2,10 @@ import { describe, expect, it } from "vitest";
 
 import type { CategoryRow } from "./categories";
 import {
-  accountCurrencyError,
+  buildTransactionRow,
   categoryOptions,
-  ghsTransactionRow,
+  exchangeFields,
+  exchangePreview,
   groupByDay,
   matchesSearch,
   parseSnapshot,
@@ -12,6 +13,7 @@ import {
   totalsInGhs,
   transactionSaveError,
   type ActivityItem,
+  type TransactionInput,
 } from "./transactions";
 
 const ACCOUNT = "11111111-1111-4111-8111-111111111111";
@@ -20,6 +22,9 @@ const CATEGORY = "22222222-2222-4222-8222-222222222222";
 const valid = {
   kind: "expense",
   amount: "1,234.50",
+  currency: "GHS",
+  rate: "",
+  accountAmount: "",
   categoryId: CATEGORY,
   accountId: ACCOUNT,
   occurredOn: "2026-10-20",
@@ -33,9 +38,12 @@ describe("parseTransactionForm", () => {
       value: {
         kind: "expense",
         amountMinor: 123450,
+        currency: "GHS",
         categoryId: CATEGORY,
         accountId: ACCOUNT,
         occurredOn: "2026-10-20",
+        rate: "",
+        accountAmountMinor: null,
         note: "Waakye and egg",
       },
     });
@@ -52,9 +60,12 @@ describe("parseTransactionForm", () => {
       parseTransactionForm({
         kind: "transfer",
         amount: "0",
+        currency: "EUR",
         categoryId: "",
         accountId: "nope",
         occurredOn: "2026-02-30",
+        rate: "0",
+        accountAmount: "-1",
         note: "x".repeat(201),
       }),
     ).toEqual({
@@ -62,9 +73,12 @@ describe("parseTransactionForm", () => {
       errors: {
         kind: "Choose expense or income.",
         amount: "The amount must be more than 0.",
+        currency: "Choose GHS or USD.",
         categoryId: "Choose a category.",
         accountId: "Choose an account.",
         occurredOn: "Enter a real date.",
+        rate: "Enter a rate above 0 with at most 6 decimals, e.g. 11.67.",
+        accountAmount: "The amount cannot be negative.",
         note: "Use 200 characters or fewer.",
       },
     });
@@ -88,24 +102,118 @@ describe("parseTransactionForm", () => {
   });
 });
 
-describe("ghsTransactionRow", () => {
-  it("uses rate 1 and the same amount everywhere (M-3, M-7)", () => {
-    const parsed = parseTransactionForm(valid);
-    if (!parsed.ok) throw new Error("expected a valid form");
-    expect(ghsTransactionRow(parsed.value)).toEqual({
-      kind: "expense",
-      occurred_on: "2026-10-20",
-      account_id: ACCOUNT,
-      category_id: CATEGORY,
-      amount_minor: 123450,
-      currency: "GHS",
-      fx_rate: 1,
-      fx_source: "none",
-      fx_rate_date: null,
-      amount_ghs_minor: 123450,
-      account_amount_minor: 123450,
-      note: "Waakye and egg",
+describe("parseTransactionForm: rate and account amount", () => {
+  it("reads a typed rate and account amount", () => {
+    const result = parseTransactionForm({ ...valid, currency: "USD", rate: " 11.67 ", accountAmount: "130.00" });
+    expect(result.ok && result.value).toMatchObject({ currency: "USD", rate: "11.67", accountAmountMinor: 13000 });
+  });
+});
+
+describe("buildTransactionRow", () => {
+  const input = (values: Partial<TransactionInput> = {}): TransactionInput => ({
+    kind: "expense",
+    amountMinor: 999,
+    currency: "USD",
+    categoryId: CATEGORY,
+    accountId: ACCOUNT,
+    occurredOn: "2026-10-24",
+    rate: "15.40",
+    accountAmountMinor: null,
+    note: "Netflix",
+    ...values,
+  });
+  const stored = { rateDate: "2026-10-23", rate: "15.4" };
+
+  it("GHS on a GHS account: rate 1, the same amount everywhere (M-3, M-7)", () => {
+    expect(buildTransactionRow(input({ currency: "GHS", amountMinor: 2500, rate: "" }), "GHS", null)).toEqual({
+      ok: true,
+      row: {
+        kind: "expense",
+        occurred_on: "2026-10-24",
+        account_id: ACCOUNT,
+        category_id: CATEGORY,
+        amount_minor: 2500,
+        currency: "GHS",
+        fx_rate: "1",
+        fx_source: "none",
+        fx_rate_date: null,
+        amount_ghs_minor: 2500,
+        account_amount_minor: 2500,
+        note: "Netflix",
+      },
     });
+  });
+
+  it("USD at the stored rate is 'auto' and keeps the rate's date (M-5)", () => {
+    // USD 9.99 × 15.40 = GHS 153.846 → 15385 pesewas; the account is USD.
+    const result = buildTransactionRow(input(), "USD", stored);
+    expect(result.ok && result.row).toMatchObject({
+      currency: "USD",
+      fx_rate: "15.40",
+      fx_source: "auto",
+      fx_rate_date: "2026-10-23",
+      amount_ghs_minor: 15385,
+      account_amount_minor: 999,
+    });
+  });
+
+  it("a typed rate that is not the stored one is 'manual', without a date", () => {
+    const result = buildTransactionRow(input({ rate: "15.5" }), "USD", stored);
+    expect(result.ok && result.row).toMatchObject({ fx_source: "manual", fx_rate_date: null, amount_ghs_minor: 15485 });
+    const noneStored = buildTransactionRow(input(), "USD", null);
+    expect(noneStored.ok && noneStored.row).toMatchObject({ fx_source: "manual", fx_rate_date: null });
+  });
+
+  it("USD on a GHS card: the account amount is the GHS value, or what the bank charged (M-7)", () => {
+    const suggested = buildTransactionRow(input(), "GHS", stored);
+    expect(suggested.ok && suggested.row.account_amount_minor).toBe(15385);
+    const corrected = buildTransactionRow(input({ accountAmountMinor: 15500 }), "GHS", stored);
+    expect(corrected.ok && corrected.row).toMatchObject({ amount_ghs_minor: 15385, account_amount_minor: 15500 });
+  });
+
+  it("GHS on a USD account: GHS ÷ rate, or the typed amount (D-36)", () => {
+    // GHS 100.00 at 11.671489 = USD 8.57
+    const suggested = buildTransactionRow(
+      input({ currency: "GHS", amountMinor: 10000, rate: "11.671489" }),
+      "USD",
+      stored,
+    );
+    expect(suggested.ok && suggested.row).toMatchObject({
+      currency: "GHS",
+      fx_rate: "1",
+      fx_source: "none",
+      amount_ghs_minor: 10000,
+      account_amount_minor: 857,
+    });
+    const typed = buildTransactionRow(input({ currency: "GHS", amountMinor: 10000, rate: "", accountAmountMinor: 860 }), "USD", null);
+    expect(typed.ok && typed.row.account_amount_minor).toBe(860);
+  });
+
+  it("ignores a typed account amount when the currencies match", () => {
+    const result = buildTransactionRow(input({ accountAmountMinor: 5 }), "USD", stored);
+    expect(result.ok && result.row.account_amount_minor).toBe(999);
+  });
+
+  it("needs a rate for USD, and for GHS on a USD account without a typed amount", () => {
+    const needRate = { ok: false, errors: { rate: "Enter the exchange rate: how many GHS for 1 USD." } };
+    expect(buildTransactionRow(input({ rate: "" }), "USD", stored)).toEqual(needRate);
+    expect(buildTransactionRow(input({ rate: "" }), "GHS", stored)).toEqual(needRate);
+    expect(buildTransactionRow(input({ currency: "GHS", rate: "" }), "USD", stored)).toEqual(needRate);
+  });
+
+  it("refuses an account amount that rounds to nothing, or results that are too large", () => {
+    // GHS 0.04 at 10 = USD 0.004 → 0 cents
+    expect(buildTransactionRow(input({ currency: "GHS", amountMinor: 4, rate: "10" }), "USD", null)).toEqual({
+      ok: false,
+      errors: { accountAmount: "Enter the amount in USD that the account changed by." },
+    });
+    expect(buildTransactionRow(input({ amountMinor: 99_999_999_999, rate: "2" }), "USD", null)).toEqual({
+      ok: false,
+      errors: { amount: "The amount is too large." },
+    });
+    expect(
+      buildTransactionRow(input({ currency: "GHS", amountMinor: 99_999_999_999, rate: "0.5" }), "USD", null),
+    ).toEqual({ ok: false, errors: { accountAmount: "The amount is too large." } });
   });
 });
 
@@ -127,7 +235,7 @@ describe("transactionSaveError", () => {
       categoryId: "Choose a category of the same type (expense or income).",
     });
     expect(transactionSaveError("23514", "the account amount must equal the amount in the same currency")).toEqual({
-      accountId: "This is a USD account. USD transactions come with exchange rates (build step 5).",
+      accountId: "This account's currency has changed. Choose the account again.",
     });
   });
 
@@ -263,18 +371,29 @@ describe("categoryOptions", () => {
   });
 });
 
-describe("accountCurrencyError", () => {
-  // Codex review on PR #5: the form only offers GHS accounts, but the Server
-  // Action must check too. A GHS amount saved on a USD account would be
-  // counted as USD cents without conversion.
-  it("allows a GHS account only, until exchange rates exist (build step 5)", () => {
-    expect(accountCurrencyError("GHS")).toBeNull();
-    expect(accountCurrencyError("USD")).toEqual({
-      accountId: "This is a USD account. USD transactions come with exchange rates (build step 5).",
-    });
+describe("exchangeFields", () => {
+  it("shows the rate when USD is involved, and the account amount when currencies differ", () => {
+    expect(exchangeFields("GHS", "GHS")).toEqual({ showRate: false, showAccountAmount: false });
+    expect(exchangeFields("USD", "USD")).toEqual({ showRate: true, showAccountAmount: false });
+    expect(exchangeFields("USD", "GHS")).toEqual({ showRate: true, showAccountAmount: true });
+    expect(exchangeFields("GHS", "USD")).toEqual({ showRate: true, showAccountAmount: true });
+    expect(exchangeFields("GHS", null)).toEqual({ showRate: false, showAccountAmount: false });
+  });
+});
+
+describe("exchangePreview", () => {
+  it("gives the GHS value of a USD amount", () => {
+    expect(exchangePreview("9.99", "15.40", "USD", "USD")).toEqual({ amountGhsMinor: 15385, accountAmountMinor: null });
   });
 
-  it("asks for an account from the list when it does not exist", () => {
-    expect(accountCurrencyError(null)).toEqual({ accountId: "Choose an account from the list." });
+  it("suggests the account amount when the currencies differ (M-7, D-36)", () => {
+    expect(exchangePreview("9.99", "15.40", "USD", "GHS")).toEqual({ amountGhsMinor: 15385, accountAmountMinor: 15385 });
+    expect(exchangePreview("100", "11.671489", "GHS", "USD")).toEqual({ amountGhsMinor: 10000, accountAmountMinor: 857 });
+  });
+
+  it("gives nothing while the amount or rate is not valid yet", () => {
+    expect(exchangePreview("", "15.40", "USD", "GHS")).toEqual({ amountGhsMinor: null, accountAmountMinor: null });
+    expect(exchangePreview("9.99", "", "USD", "GHS")).toEqual({ amountGhsMinor: null, accountAmountMinor: null });
+    expect(exchangePreview("9.999", "15", "USD", "GHS")).toEqual({ amountGhsMinor: null, accountAmountMinor: null });
   });
 });
