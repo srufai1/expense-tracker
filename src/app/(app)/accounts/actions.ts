@@ -35,7 +35,8 @@ function failure(code: string | undefined, values: Record<string, string>): Acco
   if (code === "23505") {
     return { errors: { name: "You already have an account with this name." }, values };
   }
-  return { errors: {}, formError: SAVE_FAILED, values };
+  // Shown under the pop-up title "Could not save" (D-31).
+  return { errors: {}, formError: "Check your internet connection and try again.", values };
 }
 
 function refreshAccountPages() {

@@ -3,13 +3,15 @@
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
-import { signInErrorMessage } from "@/lib/auth-errors";
+import { signInErrorField, signInErrorMessage } from "@/lib/auth-errors";
 import { safeRedirectPath } from "@/lib/safe-redirect";
 import { createClient } from "@/lib/supabase/server";
 
 export type SignInState = {
   error?: string;
   email?: string;
+  // The field to outline in red and move to after the error pop-up (D-31).
+  field?: "email" | "password";
 };
 
 // The same limits as the form. The form checks them first for a quick
@@ -33,7 +35,7 @@ export async function signIn(
   const typedEmail = String(formData.get("email") ?? "");
 
   if (!parsed.success) {
-    return { error: "Enter a valid email address and your password.", email: typedEmail };
+    return { error: "Enter a valid email address and your password.", email: typedEmail, field: "email" };
   }
 
   const supabase = await createClient();
@@ -43,7 +45,11 @@ export async function signIn(
   });
 
   if (error) {
-    return { error: signInErrorMessage(error.status), email: typedEmail };
+    return {
+      error: signInErrorMessage(error.status),
+      email: typedEmail,
+      field: signInErrorField(error.status),
+    };
   }
 
   redirect(safeRedirectPath(parsed.data.next));

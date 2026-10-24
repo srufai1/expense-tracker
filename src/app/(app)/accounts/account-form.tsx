@@ -2,14 +2,28 @@
 
 import { useActionState, useState, type FormEvent } from "react";
 
+import { FormErrorDialog } from "@/components/form-error-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ACCOUNT_TYPES, parseAccountForm, type AccountFormErrors } from "@/lib/accounts";
+import { errorList, firstInvalidField } from "@/lib/form-errors";
 import { CURRENCIES } from "@/lib/money";
+import { cn } from "@/lib/utils";
 
 import { AccountTypeIcon } from "./account-type-icon";
 import { initialAccountFormState, type AccountFormState } from "./form-state";
+
+// The fields in the order they appear on screen, and where the cursor goes
+// for each one when the error pop-up closes.
+const FIELD_ORDER = ["name", "type", "currency", "openingBalance", "openingBalanceOn"] as const;
+const FOCUS: Record<(typeof FIELD_ORDER)[number], string> = {
+  name: "#name",
+  type: 'input[name="type"]',
+  currency: 'input[name="currency"]',
+  openingBalance: "#openingBalance",
+  openingBalanceOn: "#openingBalanceOn",
+};
 
 type Values = {
   name: string;
@@ -33,25 +47,38 @@ export function AccountForm({
   today: string;
 }) {
   const [state, formAction, pending] = useActionState(action, initialAccountFormState);
-  const [clientErrors, setClientErrors] = useState<AccountFormErrors | null>(null);
+  // A failed check in the browser. A new object each time, so the error
+  // pop-up opens again on every failed attempt.
+  const [clientAttempt, setClientAttempt] = useState<{ errors: AccountFormErrors } | null>(null);
 
   // After a failed save, show what the user typed rather than the old values.
   const values = { ...initial, ...state.values } as Values;
-  const errors = clientErrors ?? state.errors;
+  const serverFailed = Boolean(state.formError) || Object.keys(state.errors).length > 0;
+  const attempt = clientAttempt ?? (serverFailed ? state : null);
+  const errors: AccountFormErrors = attempt?.errors ?? {};
+  const formError = clientAttempt ? undefined : state.formError;
+  const firstWrong = firstInvalidField(errors, FIELD_ORDER);
 
   // Quick check in the browser. The Server Action checks again.
   function checkBeforeSending(event: FormEvent<HTMLFormElement>) {
     const result = parseAccountForm(Object.fromEntries(new FormData(event.currentTarget)), today);
     if (!result.ok) {
       event.preventDefault();
-      setClientErrors(result.errors);
+      setClientAttempt({ errors: result.errors });
     } else {
-      setClientErrors(null);
+      setClientAttempt(null);
     }
   }
 
   return (
     <form action={formAction} onSubmit={checkBeforeSending} noValidate className="flex flex-col gap-5">
+      <FormErrorDialog
+        attempt={attempt}
+        title={Object.keys(errors).length > 0 ? "Please check the form" : "Could not save"}
+        messages={errorList(errors, FIELD_ORDER, formError)}
+        focusSelector={firstWrong ? FOCUS[firstWrong] : null}
+      />
+
       <Field id="name" label="Name" error={errors.name}>
         <Input
           id="name"
@@ -68,7 +95,12 @@ export function AccountForm({
 
       <fieldset className="flex flex-col gap-2" aria-describedby={errors.type ? "type-error" : undefined}>
         <legend className="mb-2 text-sm font-medium">Type</legend>
-        <div className="grid grid-cols-2 gap-2">
+        <div
+          className={cn(
+            "grid grid-cols-2 gap-2",
+            errors.type && "rounded-xl ring-2 ring-destructive ring-offset-2 ring-offset-background",
+          )}
+        >
           {ACCOUNT_TYPES.map((option) => (
             <label
               key={option.value}
@@ -91,7 +123,12 @@ export function AccountForm({
 
       <fieldset className="flex flex-col gap-2" aria-describedby={errors.currency ? "currency-error" : undefined}>
         <legend className="mb-2 text-sm font-medium">Currency</legend>
-        <div className="grid grid-cols-2 gap-1 rounded-xl bg-muted p-1">
+        <div
+          className={cn(
+            "grid grid-cols-2 gap-1 rounded-xl bg-muted p-1",
+            errors.currency && "ring-2 ring-destructive ring-offset-2 ring-offset-background",
+          )}
+        >
           {CURRENCIES.map((currency) => (
             <label
               key={currency}
@@ -148,12 +185,6 @@ export function AccountForm({
         />
       </Field>
 
-      {state.formError ? (
-        <p role="alert" className="text-sm font-medium text-destructive">
-          {state.formError}
-        </p>
-      ) : null}
-
       <Button type="submit" size="lg" className="h-12 text-base" disabled={pending}>
         {pending ? "Saving…" : submitLabel}
       </Button>
@@ -188,10 +219,12 @@ function Field({
   );
 }
 
+// The message stays in the page for screen readers (linked to the field with
+// aria-describedby); sighted users see it in the pop-up and the red outline.
 function FieldError({ id, message }: { id: string; message?: string }) {
   if (!message) return null;
   return (
-    <p id={id} className="text-sm font-medium text-destructive">
+    <p id={id} className="sr-only">
       {message}
     </p>
   );

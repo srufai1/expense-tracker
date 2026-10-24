@@ -14,3 +14,11 @@ export function signInErrorMessage(status: number | undefined): string {
   // email address has an account.
   return "That email and password do not match.";
 }
+
+// Which sign-in field to outline in red after a failed attempt (D-31).
+// Only a refusal (4xx, not 429) is about what was typed, and then the
+// password is the likely mistake.
+export function signInErrorField(status: number | undefined): "password" | undefined {
+  if (!status || status === 429 || status >= 500) return undefined;
+  return "password";
+}
