@@ -123,16 +123,16 @@ describe("transactions: ownership (Row-Level Security)", () => {
     );
   });
 
-  it("does not let the app set the owner, transfer, recurring or receipt columns yet", async () => {
-    const account = await addAccount(ALICE, "Alice grants");
-    for (const column of ["user_id", "to_account_id", "parent_transaction_id", "recurring_rule_id", "receipt_path"]) {
+  // The transfer columns are opened in build step 6 (transfers.test.ts).
+  it("does not let the app set the owner, recurring or receipt columns", async () => {
+    for (const column of ["user_id", "recurring_rule_id", "receipt_path"]) {
       await expect(
         one(ALICE, `insert into public.transactions (${column}) values (null)`),
       ).rejects.toThrow(/permission denied/);
     }
-    await expect(
-      one(ALICE, "update public.transactions set to_account_id = $1", [account]),
-    ).rejects.toThrow(/permission denied/);
+    await expect(one(ALICE, "update public.transactions set parent_transaction_id = null")).rejects.toThrow(
+      /permission denied/,
+    );
   });
 });
 

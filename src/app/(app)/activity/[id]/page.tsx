@@ -1,14 +1,16 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { Suspense } from "react";
 
 import { PageHeader } from "@/components/app-shell/page-header";
 import { formatAmountForInput } from "@/lib/money";
 
-import { updateTransaction } from "../actions";
-import { getTransaction } from "../data";
+import { deleteTransaction, restoreTransaction, updateTransaction } from "../actions";
+import { getEditable, type Transfer } from "../data";
 import { getFormChoices } from "../form-choices";
 import { TransactionForm } from "../transaction-form";
+import { deleteTransfer, restoreTransfer, saveTransfer } from "../transfer-actions";
+import { TransferForm } from "../transfer-form";
 import { DeleteTransaction } from "./delete-transaction";
 
 export const metadata: Metadata = { title: "Edit transaction" };
@@ -16,7 +18,7 @@ export const metadata: Metadata = { title: "Edit transaction" };
 export default function EditTransactionPage(props: PageProps<"/activity/[id]">) {
   return (
     <>
-      <PageHeader title="Edit transaction" backHref="/activity" />
+      <PageHeader title="Edit" backHref="/activity" />
       {/* The id comes from the address (request data), so the form renders
           inside a Suspense boundary (Cache Components rule). */}
       <Suspense fallback={<div className="h-96" aria-hidden="true" />}>
@@ -28,10 +30,14 @@ export default function EditTransactionPage(props: PageProps<"/activity/[id]">) 
 
 async function EditTransaction({ params }: { params: PageProps<"/activity/[id]">["params"] }) {
   const { id } = await params;
-  const transaction = await getTransaction(id);
-  if (!transaction) notFound();
+  const editable = await getEditable(id);
+  if (!editable) notFound();
+  // A fee is changed through its transfer (D-07).
+  if (editable.kind === "fee") redirect(`/activity/${editable.transferId}`);
+  if (editable.kind === "transfer") return <EditTransfer transfer={editable.transfer} />;
 
-  const choices = await getFormChoices({ accountId: transaction.accountId, categoryId: transaction.categoryId });
+  const transaction = editable.transaction;
+  const choices = await getFormChoices({ accountIds: [transaction.accountId], categoryId: transaction.categoryId });
   const backHref = `/activity?month=${transaction.occurredOn.slice(0, 7)}`;
 
   return (
@@ -56,7 +62,47 @@ async function EditTransaction({ params }: { params: PageProps<"/activity/[id]">
           note: transaction.note,
         }}
       />
-      <DeleteTransaction id={transaction.id} backHref={backHref} />
+      <DeleteTransaction
+        thing="transaction"
+        backHref={backHref}
+        onDelete={deleteTransaction.bind(null, transaction.id)}
+        onRestore={restoreTransaction}
+      />
+    </>
+  );
+}
+
+async function EditTransfer({ transfer }: { transfer: Transfer }) {
+  // Archived accounts this transfer uses stay choices.
+  const choices = await getFormChoices({ accountIds: [transfer.fromAccountId, transfer.toAccountId] });
+  const backHref = `/activity?month=${transfer.occurredOn.slice(0, 7)}`;
+
+  return (
+    <>
+      <TransferForm
+        action={saveTransfer.bind(null, transfer.id)}
+        submitLabel="Save changes"
+        accounts={choices.accounts}
+        rates={choices.rates}
+        // Keep the stored rate (M-2) unless changed.
+        keepRate
+        initial={{
+          fromAccountId: transfer.fromAccountId,
+          toAccountId: transfer.toAccountId,
+          amount: formatAmountForInput(transfer.amountMinor),
+          received: formatAmountForInput(transfer.receivedMinor),
+          fee: transfer.feeMinor === null ? "" : formatAmountForInput(transfer.feeMinor),
+          occurredOn: transfer.occurredOn,
+          rate: transfer.currency === "USD" ? transfer.rate : "",
+          note: transfer.note,
+        }}
+      />
+      <DeleteTransaction
+        thing="transfer"
+        backHref={backHref}
+        onDelete={deleteTransfer.bind(null, transfer.id)}
+        onRestore={restoreTransfer}
+      />
     </>
   );
 }

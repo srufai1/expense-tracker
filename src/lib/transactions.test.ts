@@ -6,6 +6,7 @@ import {
   categoryOptions,
   exchangeFields,
   exchangePreview,
+  involvesAccount,
   keptAccountAmount,
   groupByDay,
   matchesSearch,
@@ -289,6 +290,7 @@ const item = (values: Partial<ActivityItem> & { id: string }): ActivityItem => (
   categoryLabel: "Food › Eating out",
   accountName: "MoMo",
   accountId: ACCOUNT,
+  transfer: null,
   ...values,
 });
 
@@ -447,5 +449,32 @@ describe("keptAccountAmount (Codex review on PR #6)", () => {
     expect(keptAccountAmount(typed, "USD", "USD")).toBeNull();
     expect(keptAccountAmount(typed, "GHS", null)).toBeNull();
     expect(keptAccountAmount(null, "GHS", "USD")).toBeNull();
+  });
+});
+
+describe("transfers in the Activity list (D-06)", () => {
+  const BANK = "44444444-4444-4444-8444-444444444444";
+  const transfer = item({
+    id: "t",
+    kind: "transfer",
+    categoryLabel: "",
+    amountGhsMinor: 30000,
+    transfer: { toAccountId: BANK, toAccountName: "Ecobank", receivedMinor: 30000, toCurrency: "GHS" },
+  });
+
+  it("are neither income nor spending in the totals", () => {
+    expect(totalsInGhs([transfer, item({ id: "a", amountGhsMinor: 500 })])).toEqual({ inMinor: 0, outMinor: 500 });
+  });
+
+  it("can be found by the account they go to", () => {
+    expect(matchesSearch(transfer, "ecobank")).toBe(true);
+    expect(matchesSearch(transfer, "momo ecobank")).toBe(true);
+  });
+
+  it("belong to both accounts in the account filter", () => {
+    expect(involvesAccount(transfer, ACCOUNT)).toBe(true);
+    expect(involvesAccount(transfer, BANK)).toBe(true);
+    expect(involvesAccount(transfer, "other")).toBe(false);
+    expect(involvesAccount(item({ id: "e" }), BANK)).toBe(false);
   });
 });

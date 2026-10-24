@@ -153,6 +153,29 @@ export type Database = {
     };
     Functions: {
       seed_starter_categories: { Args: Record<string, never>; Returns: undefined };
+      // Saves a transfer and its optional fee together (build step 6).
+      save_transfer: {
+        Args: {
+          p_id: string | null;
+          p_occurred_on: string;
+          p_from_account_id: string;
+          p_to_account_id: string;
+          p_amount_minor: number;
+          p_to_amount_minor: number;
+          p_currency: "GHS" | "USD";
+          p_fx_rate: number | string;
+          p_fx_source: "none" | "auto" | "manual";
+          p_fx_rate_date: string | null;
+          p_amount_ghs_minor: number;
+          p_fee_minor: number | null;
+          p_fee_ghs_minor: number | null;
+          p_note: string;
+        };
+        Returns: string;
+      };
+      // Deletes a transfer with its fee; returns save_transfer's arguments
+      // for Undo, or null when it is not the user's transfer.
+      delete_transfer: { Args: { p_id: string }; Returns: unknown };
     };
     Enums: { [_ in never]: never };
     CompositeTypes: { [_ in never]: never };

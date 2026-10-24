@@ -1,4 +1,4 @@
-import { ChevronRight, Plus } from "lucide-react";
+import { ArrowLeftRight, ChevronRight, Plus } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
@@ -23,12 +23,21 @@ export default function AccountsPage() {
         title="Accounts"
         backHref="/more"
         actions={
-          <Button asChild variant="outline" className="h-11">
-            <Link href="/accounts/new">
-              <Plus aria-hidden="true" />
-              Add
-            </Link>
-          </Button>
+          <div className="flex gap-2">
+            {/* Screen 4: transfer with an optional fee. */}
+            <Button asChild variant="outline" className="h-11">
+              <Link href="/add?kind=transfer">
+                <ArrowLeftRight aria-hidden="true" />
+                Transfer
+              </Link>
+            </Button>
+            <Button asChild variant="outline" className="h-11">
+              <Link href="/accounts/new">
+                <Plus aria-hidden="true" />
+                Add
+              </Link>
+            </Button>
+          </div>
         }
       />
       <Suspense fallback={<p className="text-sm text-muted-foreground">Loading accounts…</p>}>

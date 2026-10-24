@@ -116,7 +116,7 @@ export type TransactionRow = {
 // A conversion whose result is too large to store gives null instead of
 // throwing: valid amounts times valid rates can still overflow, and an
 // exception while the form renders would crash it.
-function safeConvert(convert: () => number): number | null {
+export function safeConvert(convert: () => number): number | null {
   try {
     const value = convert();
     return Math.abs(value) <= MAX_AMOUNT_MINOR ? value : null;
@@ -228,10 +228,10 @@ export function parseSnapshot(value: unknown): TransactionSnapshot | null {
   return result.success ? result.data : null;
 }
 
-// One row of the Activity list.
+// One row of the Activity list. `transfer` is set for a transfer (D-06).
 export type ActivityItem = {
   id: string;
-  kind: EntryKind;
+  kind: EntryKind | "transfer";
   occurredOn: string;
   amountMinor: number;
   currency: Currency;
@@ -240,22 +240,29 @@ export type ActivityItem = {
   categoryLabel: string;
   accountName: string;
   accountId: string;
+  transfer: { toAccountId: string; toAccountName: string; receivedMinor: number; toCurrency: Currency } | null;
 };
 
-// Search the note, category and account, ignoring upper and lower case.
+// Search the note, category and accounts, ignoring upper and lower case.
 export function matchesSearch(item: ActivityItem, query: string): boolean {
   const words = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
-  const text = `${item.note} ${item.categoryLabel} ${item.accountName}`.toLowerCase();
+  const text = `${item.note} ${item.categoryLabel} ${item.accountName} ${item.transfer?.toAccountName ?? ""}`.toLowerCase();
   return words.every((word) => text.includes(word));
 }
 
+// The account filter: a transfer belongs to both of its accounts.
+export function involvesAccount(item: ActivityItem, accountId: string): boolean {
+  return item.accountId === accountId || item.transfer?.toAccountId === accountId;
+}
+
 // Total in and out for a list, in GHS (reports use the GHS value, M-2).
+// Transfers are neither income nor spending (D-06); their fees are expenses.
 export function totalsInGhs(items: ActivityItem[]): { inMinor: number; outMinor: number } {
   let inMinor = 0;
   let outMinor = 0;
   for (const item of items) {
     if (item.kind === "income") inMinor += item.amountGhsMinor;
-    else outMinor += item.amountGhsMinor;
+    else if (item.kind === "expense") outMinor += item.amountGhsMinor;
   }
   return { inMinor, outMinor };
 }
