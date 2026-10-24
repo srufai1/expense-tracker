@@ -82,6 +82,7 @@ password manager's notes), so you know where to continue.
 | `20261024200000_transfers.sql` | transfers with an optional fee, saved together (build step 6) |
 | `20261024220000_recurring.sql` | recurring items, created by the daily job (build step 7) |
 | `20261025090000_budgets_goals.sql` | monthly budgets and savings goals (build step 8) |
+| `20261025110000_recurring_goals.sql` | recurring goal contributions (build step 8, D-40) |
 
 The same files run in the tests (`supabase/tests/`), in PGlite, an in-memory
 Postgres, so the database rules are tested on every push.

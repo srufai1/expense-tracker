@@ -3,6 +3,8 @@
 // keep it in step with supabase/migrations. Postgres `bigint` arrives as a
 // JSON number: safe here, because amounts stay below 2^53 (MAX_AMOUNT_MINOR).
 
+type RuleKind = "expense" | "income" | "transfer" | "goal_contribution";
+
 export type Database = {
   public: {
     Tables: {
@@ -135,10 +137,12 @@ export type Database = {
         Row: {
           id: string;
           user_id: string;
-          kind: "expense" | "income" | "transfer";
-          account_id: string;
+          kind: RuleKind;
+          // null only for a goal contribution (D-40).
+          account_id: string | null;
           category_id: string | null;
           to_account_id: string | null;
+          goal_id: string | null;
           amount_minor: number;
           currency: "GHS" | "USD";
           note: string;
@@ -153,10 +157,11 @@ export type Database = {
           updated_at: string;
         };
         Insert: {
-          kind: "expense" | "income" | "transfer";
-          account_id: string;
+          kind: RuleKind;
+          account_id: string | null;
           category_id: string | null;
           to_account_id: string | null;
+          goal_id: string | null;
           amount_minor: number;
           currency: "GHS" | "USD";
           note?: string;
@@ -169,10 +174,11 @@ export type Database = {
           paused?: boolean;
         };
         Update: {
-          kind?: "expense" | "income" | "transfer";
-          account_id?: string;
+          kind?: RuleKind;
+          account_id?: string | null;
           category_id?: string | null;
           to_account_id?: string | null;
+          goal_id?: string | null;
           amount_minor?: number;
           currency?: "GHS" | "USD";
           note?: string;
@@ -224,9 +230,21 @@ export type Database = {
           occurred_on: string;
           amount_minor: number;
           note: string;
+          // Set by the daily job for a recurring contribution (D-40).
+          recurring_rule_id: string | null;
+          occurrence_date: string | null;
           created_at: string;
         };
-        Insert: { goal_id: string; occurred_on: string; amount_minor: number; note?: string };
+        Insert: {
+          goal_id: string;
+          occurred_on: string;
+          amount_minor: number;
+          note?: string;
+          // The daily job only (service_role): it has no signed-in user.
+          user_id?: string;
+          recurring_rule_id?: string;
+          occurrence_date?: string;
+        };
         Update: Record<string, never>;
         Relationships: [];
       };

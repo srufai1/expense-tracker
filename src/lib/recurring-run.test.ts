@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { planRule, type RuleToRun } from "./recurring-run";
+import { planContributions, planRule, type RuleToRun } from "./recurring-run";
 
 const USER = "00000000-0000-4000-8000-00000000000a";
 const RULE = "55555555-5555-4555-8555-555555555555";
@@ -15,6 +15,7 @@ const rule = (values: Partial<RuleToRun> = {}): RuleToRun => ({
   accountId: CASH,
   categoryId: RENT,
   toAccountId: null,
+  goalId: null,
   amountMinor: 150000,
   currency: "GHS",
   note: "Rent",
@@ -168,3 +169,72 @@ describe("planRule", () => {
   });
 });
 
+
+describe("planContributions (D-40)", () => {
+  const FUND = "66666666-6666-4666-8666-666666666666";
+  const goalRule = (values: Partial<RuleToRun> = {}) =>
+    rule({
+      kind: "goal_contribution",
+      accountId: null,
+      categoryId: null,
+      goalId: FUND,
+      amountMinor: 18000,
+      note: "",
+      frequency: "weekly",
+      weekday: 1,
+      dayOfMonth: null,
+      nextRunOn: "2026-10-12",
+      ...values,
+    });
+
+  it("adds a contribution per due date, linked to the rule, and moves next_run_on on", () => {
+    expect(planContributions(goalRule(), false, "2026-10-26")).toEqual({
+      rows: ["2026-10-12", "2026-10-19", "2026-10-26"].map((date) => ({
+        user_id: USER,
+        goal_id: FUND,
+        occurred_on: date,
+        amount_minor: 18000,
+        note: "",
+        recurring_rule_id: RULE,
+        occurrence_date: date,
+      })),
+      nextRunOn: "2026-11-02",
+      error: null,
+    });
+  });
+
+  it("adds nothing for an archived goal, and lets the dates pass", () => {
+    expect(planContributions(goalRule(), true, "2026-10-26")).toEqual({ rows: [], nextRunOn: "2026-11-02", error: null });
+  });
+
+  it("does nothing before the next date or while paused", () => {
+    expect(planContributions(goalRule(), false, "2026-10-11")).toEqual({ rows: [], nextRunOn: "2026-10-12", error: null });
+    expect(planContributions(goalRule({ paused: true }), true, "2026-10-26")).toEqual({
+      rows: [],
+      nextRunOn: "2026-10-12",
+      error: null,
+    });
+  });
+
+  it("reports a rule without a goal", () => {
+    expect(planContributions(goalRule({ goalId: null }), false, "2026-10-26")).toEqual({
+      rows: [],
+      nextRunOn: "2026-10-12",
+      error: "The recurring item has no goal.",
+    });
+  });
+});
+
+describe("planRule for a goal contribution", () => {
+  it("refuses: it is not a transaction", () => {
+    expect(
+      planRule(rule({ kind: "goal_contribution", nextRunOn: "2026-10-25" }), "GHS", null, RATES, "2026-10-25").error,
+    ).toBe("A goal contribution is not a transaction.");
+  });
+
+  it("reports a rule without an account", () => {
+    expect(planRule(rule({ accountId: null, nextRunOn: "2026-10-25" }), "GHS", null, RATES, "2026-10-25").error).toBe(
+      "The recurring item has no account.",
+    );
+  });
+});

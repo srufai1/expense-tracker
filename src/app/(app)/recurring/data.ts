@@ -8,9 +8,11 @@ import { createClient } from "@/lib/supabase/server";
 export type Rule = {
   id: string;
   kind: RuleKind;
-  accountId: string;
+  // null only for a goal contribution (D-40).
+  accountId: string | null;
   categoryId: string | null;
   toAccountId: string | null;
+  goalId: string | null;
   amountMinor: number;
   currency: Currency;
   note: string;
@@ -24,14 +26,15 @@ export type Rule = {
 };
 
 const COLUMNS =
-  "id, kind, account_id, category_id, to_account_id, amount_minor, currency, note, frequency, weekday, day_of_month, starts_on, ends_on, next_run_on, paused";
+  "id, kind, account_id, category_id, to_account_id, goal_id, amount_minor, currency, note, frequency, weekday, day_of_month, starts_on, ends_on, next_run_on, paused";
 
 type Row = {
   id: string;
   kind: RuleKind;
-  account_id: string;
+  account_id: string | null;
   category_id: string | null;
   to_account_id: string | null;
+  goal_id: string | null;
   amount_minor: number;
   currency: Currency;
   note: string;
@@ -51,6 +54,7 @@ function toRule(row: Row): Rule {
     accountId: row.account_id,
     categoryId: row.category_id,
     toAccountId: row.to_account_id,
+    goalId: row.goal_id,
     amountMinor: row.amount_minor,
     currency: row.currency,
     note: row.note,

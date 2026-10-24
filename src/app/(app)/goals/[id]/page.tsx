@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
 import { PageHeader } from "@/components/app-shell/page-header";
 import { ArchiveDeleteZone } from "@/components/archive-delete-zone";
+import { Button } from "@/components/ui/button";
 import { dayLabel, todayInAccra } from "@/lib/dates";
 import { goalProgress } from "@/lib/goals";
 import { formatAmountForInput, formatMoney } from "@/lib/money";
@@ -55,6 +57,11 @@ async function GoalDetail({ params }: { params: PageProps<"/goals/[id]">["params
 
       <h2 className="px-1 text-base font-bold">Put money towards it</h2>
       <ContributionForm action={addContribution.bind(null, goal.id)} today={today} />
+      {goal.archived ? null : (
+        <Button asChild variant="outline" className="h-11">
+          <Link href={`/recurring/new?goal=${goal.id}`}>Add the same amount every week or month</Link>
+        </Button>
+      )}
 
       {goal.contributions.length > 0 ? (
         <section className="flex flex-col gap-2" aria-label="Contributions">

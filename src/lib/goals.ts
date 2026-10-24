@@ -73,6 +73,18 @@ export function goalSaveError(code: string | undefined): GoalFormErrors | null {
 
 export function goalDeleteError(code: string | undefined): string {
   return isStillUsed(code)
-    ? "This goal has contributions, so it cannot be deleted. Archive it instead: it is hidden, and its history stays."
+    ? "This goal has contributions or a recurring item, so it cannot be deleted. Archive it instead: it is hidden, and its history stays."
     : "Check your internet connection and try again.";
+}
+
+// The goals a recurring item can add to (D-40): active goals by name, and an
+// archived one only when the item already uses it.
+export function goalChoices(
+  goals: { id: string; name: string; archived: boolean }[],
+  keepId?: string,
+): { id: string; name: string }[] {
+  return goals
+    .filter((goal) => !goal.archived || goal.id === keepId)
+    .map((goal) => ({ id: goal.id, name: goal.archived ? `${goal.name} (archived)` : goal.name }))
+    .sort((a, b) => a.name.localeCompare(b.name));
 }
