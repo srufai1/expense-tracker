@@ -4,6 +4,7 @@ import {
   describeSchedule,
   dueDates,
   firstRunOn,
+  nextRunAfterRestore,
   nextOccurrence,
   occurrenceOnOrAfter,
   parseRecurringForm,
@@ -101,6 +102,7 @@ describe("dueDates", () => {
 const ACCOUNT = "11111111-1111-4111-8111-111111111111";
 const OTHER = "22222222-2222-4222-8222-222222222222";
 const CATEGORY = "33333333-3333-4333-8333-333333333333";
+const GOAL = "44444444-4444-4444-8444-444444444444";
 
 const form = {
   kind: "expense",
@@ -128,6 +130,7 @@ describe("parseRecurringForm", () => {
         categoryId: CATEGORY,
         accountId: ACCOUNT,
         toAccountId: null,
+        goalId: null,
         frequency: "monthly",
         weekday: null,
         dayOfMonth: 25,
@@ -160,6 +163,35 @@ describe("parseRecurringForm", () => {
     });
   });
 
+  it("reads a goal contribution (D-40): GHS, a goal, no account or category", () => {
+    const result = parseRecurringForm({
+      ...form,
+      kind: "goal_contribution",
+      goalId: GOAL,
+      accountId: "",
+      toAccountId: OTHER,
+      frequency: "weekly",
+      weekday: "1",
+    });
+    expect(result.ok && result.value).toMatchObject({
+      kind: "goal_contribution",
+      amountMinor: 150000,
+      currency: "GHS",
+      goalId: GOAL,
+      accountId: null,
+      categoryId: null,
+      toAccountId: null,
+    });
+    expect(parseRecurringForm({ ...form, kind: "goal_contribution", goalId: "" })).toEqual({
+      ok: false,
+      errors: { goalId: "Choose a goal." },
+    });
+    expect(parseRecurringForm({ ...form, kind: "goal_contribution", goalId: GOAL, currency: "USD" })).toEqual({
+      ok: false,
+      errors: { currency: "A goal contribution is in GHS." },
+    });
+  });
+
   it("gives one message per wrong field", () => {
     expect(
       parseRecurringForm({
@@ -177,7 +209,7 @@ describe("parseRecurringForm", () => {
     ).toEqual({
       ok: false,
       errors: {
-        kind: "Choose expense, income or transfer.",
+        kind: "Choose expense, income, transfer or goal.",
         amount: "The amount must be more than 0.",
         currency: "Choose GHS or USD.",
         accountId: "Choose an account.",
@@ -230,6 +262,21 @@ describe("firstRunOn (D-39)", () => {
   });
 });
 
+describe("nextRunAfterRestore (D-40)", () => {
+  const rule = { ...weekly(1), startsOn: "2026-09-07" };
+
+  it("skips the dates that passed while the goal was archived", () => {
+    // Archived from 5 Oct and the job missed those Mondays: restored on Thu 22 Oct.
+    expect(nextRunAfterRestore({ ...rule, nextRunOn: "2026-10-05" }, "2026-10-22")).toBe("2026-10-26");
+    // A date due today stays due.
+    expect(nextRunAfterRestore({ ...rule, nextRunOn: "2026-10-05" }, "2026-10-26")).toBe("2026-10-26");
+  });
+
+  it("never moves a later next date back", () => {
+    expect(nextRunAfterRestore({ ...rule, nextRunOn: "2026-11-09" }, "2026-10-22")).toBe("2026-11-09");
+  });
+});
+
 describe("describeSchedule", () => {
   it("says the schedule in words", () => {
     expect(describeSchedule({ frequency: "weekly", weekday: 1, dayOfMonth: null })).toBe("Every Monday");
@@ -257,6 +304,9 @@ describe("recurringSaveError", () => {
     });
     expect(recurringSaveError("23514", "recurring_rules: a recurring transfer is between accounts in one currency")).toEqual({
       toAccountId: "A recurring transfer needs two accounts in the same currency.",
+    });
+    expect(recurringSaveError("23503", "recurring_rules: goal not found")).toEqual({
+      goalId: "Choose a goal from the list.",
     });
   });
 

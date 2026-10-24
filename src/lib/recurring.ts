@@ -71,6 +71,17 @@ export function firstRunOn(schedule: Schedule, startsOn: string, today: string):
   return occurrenceOnOrAfter(schedule, startsOn > today ? startsOn : today);
 }
 
+// When an archived goal is restored (D-40): the dates that passed while it
+// was archived are skipped, as after a pause (D-39). A date due today stays
+// due, and a later next date is kept.
+export function nextRunAfterRestore(
+  rule: Schedule & { startsOn: string; nextRunOn: string },
+  today: string,
+): string {
+  const resumed = firstRunOn(rule, rule.startsOn, today);
+  return rule.nextRunOn > resumed ? rule.nextRunOn : resumed;
+}
+
 const WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 export const WEEKDAY_OPTIONS = WEEKDAYS.map((name, index) => ({ value: index + 1, name }));
 
@@ -87,7 +98,7 @@ export function describeSchedule(schedule: Schedule): string {
   return `Monthly on the ${ordinal(day)}${day > 28 ? " (or the last day)" : ""}`;
 }
 
-export const RULE_KINDS = ["expense", "income", "transfer"] as const;
+export const RULE_KINDS = ["expense", "income", "transfer", "goal_contribution"] as const;
 export type RuleKind = (typeof RULE_KINDS)[number];
 
 export type RecurringInput = {
@@ -96,9 +107,12 @@ export type RecurringInput = {
   currency: Currency;
   // Expense and income only.
   categoryId: string | null;
-  accountId: string;
+  // Every kind except a goal contribution.
+  accountId: string | null;
   // Transfers only (D-38).
   toAccountId: string | null;
+  // Goal contributions only (D-40): GHS, no account. A goal is a label (D-24).
+  goalId: string | null;
   frequency: Frequency;
   weekday: number | null;
   dayOfMonth: number | null;
@@ -113,6 +127,7 @@ export const RECURRING_FIELDS = [
   "amount",
   "currency",
   "categoryId",
+  "goalId",
   "accountId",
   "toAccountId",
   "frequency",
@@ -126,7 +141,7 @@ type Field = (typeof RECURRING_FIELDS)[number];
 export type RecurringFormErrors = Partial<Record<Field, string>>;
 
 const recurringFormSchema = z.object({
-  kind: z.enum(RULE_KINDS, { error: "Choose expense, income or transfer." }),
+  kind: z.enum(RULE_KINDS, { error: "Choose expense, income, transfer or goal." }),
   amount: z.string().transform((text, context) => {
     const result = parseAmount(text);
     if (!result.ok) {
@@ -136,7 +151,6 @@ const recurringFormSchema = z.object({
     return result.minor;
   }),
   currency: z.enum(CURRENCIES, { error: "Choose GHS or USD." }),
-  accountId: z.uuid({ error: "Choose an account." }),
   frequency: z.enum(FREQUENCIES, { error: "Choose weekly or monthly." }),
   startsOn: z.string().refine(isIsoDate, "Enter a real date."),
   endsOn: z.string().refine((text) => text === "" || isIsoDate(text), "Enter a real date, or leave it empty."),
@@ -156,12 +170,16 @@ export function parseRecurringForm(
   const text = Object.fromEntries(
     RECURRING_FIELDS.map((field) => [field, typeof raw[field] === "string" ? raw[field] : ""]),
   ) as Record<Field, string>;
+  // Every kind except a goal contribution needs an account.
+  const goal = text.kind === "goal_contribution";
+  const accountError = !goal && !isUuid(text.accountId) ? "Choose an account." : undefined;
   const result = recurringFormSchema.safeParse(text);
   if (!result.success) {
     const errors: RecurringFormErrors = {};
     for (const issue of result.error.issues) {
       errors[issue.path[0] as Field] ??= issue.message;
     }
+    if (accountError) errors.accountId = accountError;
     return { ok: false, errors };
   }
 
@@ -169,9 +187,12 @@ export function parseRecurringForm(
   const transfer = base.kind === "transfer";
   const weekly = base.frequency === "weekly";
   const errors: RecurringFormErrors = {};
-  if (!transfer && !isUuid(text.categoryId)) errors.categoryId = "Choose a category.";
+  if (accountError) errors.accountId = accountError;
+  if (goal && !isUuid(text.goalId)) errors.goalId = "Choose a goal.";
+  if (goal && base.currency !== "GHS") errors.currency = "A goal contribution is in GHS.";
+  if (!transfer && !goal && !isUuid(text.categoryId)) errors.categoryId = "Choose a category.";
   if (transfer && !isUuid(text.toAccountId)) errors.toAccountId = "Choose the account the money goes to.";
-  else if (transfer && text.toAccountId === base.accountId) {
+  else if (transfer && text.toAccountId === text.accountId) {
     errors.toAccountId = "Choose a different account to move the money to.";
   }
   if (weekly && !inRange(text.weekday, 1, 7)) errors.weekday = "Choose a day of the week.";
@@ -187,9 +208,10 @@ export function parseRecurringForm(
       kind: base.kind,
       amountMinor: base.amount,
       currency: base.currency,
-      categoryId: transfer ? null : text.categoryId,
-      accountId: base.accountId,
+      categoryId: transfer || goal ? null : text.categoryId,
+      accountId: goal ? null : text.accountId,
       toAccountId: transfer ? text.toAccountId : null,
+      goalId: goal ? text.goalId : null,
       frequency: base.frequency,
       weekday: weekly ? Number(text.weekday) : null,
       dayOfMonth: weekly ? null : Number(text.dayOfMonth),
@@ -211,6 +233,9 @@ export function recurringSaveError(code: string | undefined, message: string): R
   }
   if (code === "23514" && message.includes("category kind must match")) {
     return { categoryId: "Choose a category of the same type (expense or income)." };
+  }
+  if (message.includes("goal not found") || message.includes("goal_id_fkey")) {
+    return { goalId: "Choose a goal from the list." };
   }
   if (code === "23514" && message.includes("in one currency")) {
     return { toAccountId: "A recurring transfer needs two accounts in the same currency." };

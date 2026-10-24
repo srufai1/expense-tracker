@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { goalDeleteError, goalProgress, goalSaveError, parseContributionForm, parseGoalForm } from "./goals";
+import { goalChoices, goalDeleteError, goalProgress, goalSaveError, parseContributionForm, parseGoalForm } from "./goals";
 
 describe("parseGoalForm", () => {
   it("reads a name, a GHS target and a target date", () => {
@@ -60,9 +60,24 @@ describe("goal errors", () => {
     expect(goalSaveError("23505")).toEqual({ name: "You already have a goal with this name." });
     expect(goalSaveError(undefined)).toBeNull();
     expect(goalDeleteError("23001")).toBe(
-      "This goal has contributions, so it cannot be deleted. Archive it instead: it is hidden, and its history stays.",
+      "This goal has contributions or a recurring item, so it cannot be deleted. Archive it instead: it is hidden, and its history stays.",
     );
     expect(goalDeleteError("23503")).toContain("Archive it instead");
     expect(goalDeleteError(undefined)).toBe("Check your internet connection and try again.");
+  });
+});
+
+describe("goalChoices", () => {
+  it("lists active goals by name, plus an archived one the item already uses", () => {
+    const goals = [
+      { id: "b", name: "Trip", archived: false },
+      { id: "a", name: "Car", archived: false },
+      { id: "c", name: "Old phone", archived: true },
+    ];
+    expect(goalChoices(goals)).toEqual([
+      { id: "a", name: "Car" },
+      { id: "b", name: "Trip" },
+    ]);
+    expect(goalChoices(goals, "c").map((goal) => goal.name)).toEqual(["Car", "Old phone (archived)", "Trip"]);
   });
 });

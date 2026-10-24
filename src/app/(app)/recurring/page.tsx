@@ -14,6 +14,7 @@ import { cn } from "@/lib/utils";
 
 import { getAccounts } from "../accounts/data";
 import { getCategories } from "../categories/data";
+import { getGoalNames } from "../goals/data";
 import { getRules, type Rule } from "./data";
 
 export const metadata: Metadata = { title: "Recurring" };
@@ -45,12 +46,20 @@ async function RuleList() {
   // request (Cache Components rule).
   await requireUser();
   const today = todayInAccra();
-  const [rules, accounts, categories] = await Promise.all([getRules(), getAccounts(), getCategories()]);
+  const [rules, accounts, categories, goals] = await Promise.all([
+    getRules(),
+    getAccounts(),
+    getCategories(),
+    getGoalNames(),
+  ]);
   const accountName = new Map(accounts.map((account) => [account.id, account.name]));
+  const goalName = new Map(goals.map((goal) => [goal.id, goal.name]));
   const title = (rule: Rule) =>
     rule.kind === "transfer"
-      ? `${accountName.get(rule.accountId) ?? ""} → ${accountName.get(rule.toAccountId ?? "") ?? ""}`
-      : categoryPath(categories, rule.categoryId ?? "");
+      ? `${accountName.get(rule.accountId ?? "") ?? ""} → ${accountName.get(rule.toAccountId ?? "") ?? ""}`
+      : rule.kind === "goal_contribution"
+        ? `To ${goalName.get(rule.goalId ?? "") ?? "a goal"}`
+        : categoryPath(categories, rule.categoryId ?? "");
   const finished = (rule: Rule) => rule.endsOn !== null && rule.nextRunOn > rule.endsOn;
 
   if (rules.length === 0) {
@@ -58,8 +67,8 @@ async function RuleList() {
       <section className="flex flex-col items-start gap-3 rounded-2xl border bg-card p-5">
         <h2 className="text-lg font-bold">No recurring items yet</h2>
         <p className="text-sm text-muted-foreground">
-          Salary, rent, subscriptions or a regular transfer to savings: add them once, and they are added
-          for you on their dates.
+          Salary, rent, subscriptions, a regular transfer or a weekly amount towards a goal: add them once,
+          and they are added for you on their dates.
         </p>
         <Button asChild className="h-11">
           <Link href="/recurring/new">Add a recurring item</Link>

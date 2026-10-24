@@ -10,10 +10,12 @@ import { buildTransactionRow, safeConvert, type EntryKind } from "./transactions
 export type RuleToRun = {
   id: string;
   userId: string;
-  kind: EntryKind | "transfer";
-  accountId: string;
+  kind: EntryKind | "transfer" | "goal_contribution";
+  // null only for a goal contribution (D-40).
+  accountId: string | null;
   categoryId: string | null;
   toAccountId: string | null;
+  goalId: string | null;
   amountMinor: number;
   currency: Currency;
   note: string;
@@ -57,8 +59,11 @@ export function planRule(
 ): { rows: OccurrenceRow[]; nextRunOn: string; error: string | null } {
   const rows: OccurrenceRow[] = [];
   let nextRunOn = rule.nextRunOn;
+  if (rule.kind === "goal_contribution") return { rows, nextRunOn, error: "A goal contribution is not a transaction." };
+  if (rule.accountId === null) return { rows, nextRunOn, error: "The recurring item has no account." };
+  const template: TransactionRule = { ...rule, kind: rule.kind, accountId: rule.accountId };
   for (const date of dueDates(rule, today)) {
-    const made = occurrenceRow(rule, accountCurrency, toAccountCurrency, rates, date);
+    const made = occurrenceRow(template, accountCurrency, toAccountCurrency, rates, date);
     if (!made.ok) return { rows, nextRunOn, error: made.error };
     rows.push(made.row);
     nextRunOn = nextOccurrence(rule, date);
@@ -66,8 +71,50 @@ export function planRule(
   return { rows, nextRunOn, error: null };
 }
 
-function occurrenceRow(
+export type ContributionRow = {
+  user_id: string;
+  goal_id: string;
+  occurred_on: string;
+  amount_minor: number;
+  note: string;
+  recurring_rule_id: string;
+  occurrence_date: string;
+};
+
+// A recurring goal contribution (D-40): one contribution per due date, in
+// GHS, with no account (D-24). While the goal is archived, nothing is added
+// and the dates pass, as if the rule were paused (D-39).
+export function planContributions(
   rule: RuleToRun,
+  goalArchived: boolean,
+  today: string,
+): { rows: ContributionRow[]; nextRunOn: string; error: string | null } {
+  const goalId = rule.goalId;
+  if (!goalId) return { rows: [], nextRunOn: rule.nextRunOn, error: "The recurring item has no goal." };
+  const rows: ContributionRow[] = [];
+  let nextRunOn = rule.nextRunOn;
+  for (const date of dueDates(rule, today)) {
+    if (!goalArchived) {
+      rows.push({
+        user_id: rule.userId,
+        goal_id: goalId,
+        occurred_on: date,
+        amount_minor: rule.amountMinor,
+        note: rule.note,
+        recurring_rule_id: rule.id,
+        occurrence_date: date,
+      });
+    }
+    nextRunOn = nextOccurrence(rule, date);
+  }
+  return { rows, nextRunOn, error: null };
+}
+
+// A rule that creates transactions: every kind except a goal contribution.
+type TransactionRule = RuleToRun & { kind: EntryKind | "transfer"; accountId: string };
+
+function occurrenceRow(
+  rule: TransactionRule,
   accountCurrency: Currency,
   toAccountCurrency: Currency | null,
   rates: StoredRate[],

@@ -30,6 +30,7 @@ const FOCUS: Record<(typeof RECURRING_FIELDS)[number], string> = {
   amount: "#amount",
   currency: 'input[name="currency"]',
   categoryId: "#categoryId",
+  goalId: "#goalId",
   accountId: "#accountId",
   toAccountId: "#toAccountId",
   frequency: 'input[name="frequency"]',
@@ -39,7 +40,12 @@ const FOCUS: Record<(typeof RECURRING_FIELDS)[number], string> = {
   endsOn: "#endsOn",
   note: "#note",
 };
-const KIND_LABEL: Record<RuleKind, string> = { expense: "Expense", income: "Income", transfer: "Transfer" };
+const KIND_LABEL: Record<RuleKind, string> = {
+  expense: "Expense",
+  income: "Income",
+  transfer: "Transfer",
+  goal_contribution: "Goal",
+};
 const FREQUENCY_LABEL: Record<Frequency, string> = { weekly: "Weekly", monthly: "Monthly" };
 
 export type RecurringFormValues = {
@@ -47,6 +53,7 @@ export type RecurringFormValues = {
   amount: string;
   currency: Currency;
   categoryId: string;
+  goalId: string;
   accountId: string;
   toAccountId: string;
   frequency: Frequency;
@@ -65,12 +72,14 @@ export function RecurringForm({
   initial,
   categories,
   accounts,
+  goals,
   submitLabel,
 }: {
   action: (state: RecurringFormState, formData: FormData) => Promise<RecurringFormState>;
   initial: RecurringFormValues;
   categories: Record<"expense" | "income", CategoryOption[]>;
   accounts: { id: string; name: string; currency: Currency }[];
+  goals: { id: string; name: string }[];
   submitLabel: string;
 }) {
   const [state, formAction, pending] = useActionState(action, initialState);
@@ -85,9 +94,11 @@ export function RecurringForm({
   const [dayOfMonth, setDayOfMonth] = useState(start.dayOfMonth || "1");
 
   const transfer = kind === "transfer";
+  // A goal contribution has no account or category, and is in GHS (D-40).
+  const goal = kind === "goal_contribution";
   // A transfer is in the sending account's currency (D-38).
   const fromCurrency = accounts.find((account) => account.id === accountId)?.currency ?? null;
-  const shownCurrency = transfer ? (fromCurrency ?? "GHS") : currency;
+  const shownCurrency = transfer ? (fromCurrency ?? "GHS") : goal ? "GHS" : currency;
 
   const serverFailed = Boolean(state.formError) || Object.keys(state.errors).length > 0;
   const attempt = clientAttempt ?? (serverFailed ? state : null);
@@ -134,7 +145,7 @@ export function RecurringForm({
               className="h-14 pl-14 text-2xl font-bold tabular-nums"
             />
           </div>
-          {transfer ? (
+          {transfer || goal ? (
             <input type="hidden" name="currency" value={shownCurrency} />
           ) : (
             <div className="w-32 shrink-0">
@@ -144,7 +155,31 @@ export function RecurringForm({
         </div>
       </Field>
 
-      {transfer ? null : (
+      {goal ? (
+        <Field
+          id="goalId"
+          label="Goal"
+          hint="The money stays in its account: this only adds to the goal's progress."
+          error={errors.goalId}
+        >
+          <NativeSelect
+            id="goalId"
+            name="goalId"
+            defaultValue={start.goalId}
+            aria-invalid={Boolean(errors.goalId)}
+            aria-describedby={`goalId-hint${errors.goalId ? " goalId-error" : ""}`}
+          >
+            <option value="">{goals.length === 0 ? "Add a goal first (Budgets & goals)" : "Choose a goal"}</option>
+            {goals.map((option) => (
+              <option key={option.id} value={option.id}>
+                {option.name}
+              </option>
+            ))}
+          </NativeSelect>
+        </Field>
+      ) : null}
+
+      {transfer || goal ? null : (
         <Field id="categoryId" label="Category" error={errors.categoryId}>
           <NativeSelect
             key={kind}
@@ -164,27 +199,29 @@ export function RecurringForm({
         </Field>
       )}
 
-      <Field
-        id="accountId"
-        label={transfer ? "From account" : kind === "income" ? "Into account" : "From account"}
-        error={errors.accountId}
-      >
-        <NativeSelect
+      {goal ? null : (
+        <Field
           id="accountId"
-          name="accountId"
-          value={accountId}
-          onChange={(event) => setAccountId(event.target.value)}
-          aria-invalid={Boolean(errors.accountId)}
-          aria-describedby={errors.accountId ? "accountId-error" : undefined}
+          label={transfer ? "From account" : kind === "income" ? "Into account" : "From account"}
+          error={errors.accountId}
         >
-          <option value="">Choose an account</option>
-          {accounts.map((account) => (
-            <option key={account.id} value={account.id}>
-              {account.name} ({account.currency})
-            </option>
-          ))}
-        </NativeSelect>
-      </Field>
+          <NativeSelect
+            id="accountId"
+            name="accountId"
+            value={accountId}
+            onChange={(event) => setAccountId(event.target.value)}
+            aria-invalid={Boolean(errors.accountId)}
+            aria-describedby={errors.accountId ? "accountId-error" : undefined}
+          >
+            <option value="">Choose an account</option>
+            {accounts.map((account) => (
+              <option key={account.id} value={account.id}>
+                {account.name} ({account.currency})
+              </option>
+            ))}
+          </NativeSelect>
+        </Field>
+      )}
 
       {transfer ? (
         <Field

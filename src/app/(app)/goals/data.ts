@@ -54,3 +54,12 @@ export async function getGoal(id: string): Promise<Goal | null> {
   if (error && error.code !== "22P02") throw new Error(`Could not load the goal: ${error.message}`);
   return data ? toGoal(data as unknown as Row) : null;
 }
+
+// Just the names, for choosing a goal (the recurring form, the list).
+export async function getGoalNames(): Promise<{ id: string; name: string; archived: boolean }[]> {
+  await requireUser();
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("goals").select("id, name, archived_at").order("name");
+  if (error) throw new Error(`Could not load goals: ${error.message}`);
+  return data.map((goal) => ({ id: goal.id, name: goal.name, archived: goal.archived_at !== null }));
+}

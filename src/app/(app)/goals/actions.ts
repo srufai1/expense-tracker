@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { requireUser } from "@/lib/auth";
+import { todayInAccra } from "@/lib/dates";
 import { formValues } from "@/lib/form-data";
 import {
   goalDeleteError,
@@ -13,6 +14,7 @@ import {
   type ContributionFormErrors,
   type GoalFormErrors,
 } from "@/lib/goals";
+import { nextRunAfterRestore } from "@/lib/recurring";
 import { createClient } from "@/lib/supabase/server";
 
 const CHECK_CONNECTION = "Check your internet connection and try again.";
@@ -87,6 +89,25 @@ export async function deleteContribution(id: string): Promise<string | undefined
 export async function setGoalArchived(id: string, archived: boolean): Promise<string | undefined> {
   await requireUser();
   const supabase = await createClient();
+  if (!archived) {
+    // D-40: the dates that passed while the goal was archived are skipped,
+    // even if the daily job missed a run. Done before the goal is active
+    // again, so a run in between cannot add them.
+    const { data: rules, error: readError } = await supabase
+      .from("recurring_rules")
+      .select("id, frequency, weekday, day_of_month, starts_on, next_run_on")
+      .eq("goal_id", id);
+    if (readError) return CHECK_CONNECTION;
+    const today = todayInAccra();
+    for (const rule of rules) {
+      const schedule = { frequency: rule.frequency, weekday: rule.weekday, dayOfMonth: rule.day_of_month };
+      const next = nextRunAfterRestore({ ...schedule, startsOn: rule.starts_on, nextRunOn: rule.next_run_on }, today);
+      if (next === rule.next_run_on) continue;
+      const { error: moveError } = await supabase.from("recurring_rules").update({ next_run_on: next }).eq("id", rule.id);
+      if (moveError) return CHECK_CONNECTION;
+    }
+    revalidatePath("/recurring");
+  }
   const { error } = await supabase
     .from("goals")
     .update({ archived_at: archived ? new Date().toISOString() : null })
