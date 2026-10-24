@@ -54,6 +54,9 @@ not silently edit the old one.
 | D-25 | Budgets are set on top-level categories, with **optional sub-category budgets** that may not add up to more than the parent (Q-2). |
 | D-26 | Any transaction can be edited or deleted at any time, with a 10-second **Undo** after a delete. Past reports reflect the current data (Q-3). |
 | D-27 | The Monday email is sent even for an empty week, with the note "Nothing recorded this week" (Q-4). |
+| D-28 | Supabase project settings: "Automatically expose new tables" is **off** and "Enable automatic RLS" is **on**. So every migration grants table access to the `authenticated` role explicitly, next to the table's RLS policies. Nothing is reachable through the Data API until a migration opens it. (23 Oct 2026) |
+| D-29 | An account's balance may be **negative** (an overdraft, or a card where money is owed). Negative balances are shown in red. (23 Oct 2026) |
+| D-30 | Each account's opening balance has a **date** (`opening_balance_on`, default today). Only transactions on or after that date change the balance. Earlier transactions still count in reports, so older spending can be added for history without being subtracted twice. (23 Oct 2026) |
 
 ## 3. What is in version 1, and what is not
 
@@ -133,7 +136,7 @@ number is wrong.
 | **M-5 Which rate is used** | A new transaction uses the stored rate for its date. If there is no rate for that date (for example a back-dated entry), it uses the latest earlier rate and shows "rate from <date>". You can always type your own rate (`fx_source = 'manual'`). |
 | **M-6 If the rate service is down** | The app keeps working. It uses the latest stored rate and shows a warning. If no rate has ever been stored, you must type one in before saving a USD transaction. |
 | **M-7 What leaves the account** | Each transaction also stores the amount in the **account's** currency. Example: Netflix costs USD 9.99, but your GHS Visa card is charged GHS 153.85. The original USD 9.99 is kept as evidence, and the card balance goes down by GHS 153.85. If the bank's real charge is different, you can correct it. |
-| **M-8 Balances are calculated, never stored** | Account balance = opening balance + income − expenses − transfers out + transfers in. A stored balance would drift away from the transactions sooner or later. |
+| **M-8 Balances are calculated, never stored** | Account balance = opening balance + income − expenses − transfers out + transfers in, counting only transactions on or after the opening date (D-30). A stored balance would drift away from the transactions sooner or later. |
 | **M-9 Display** | Amounts display as `GHS 1,234.56` / `USD 9.99`, with tabular numbers so digits line up. The time zone is Africa/Accra. |
 
 ## 6. Data model
@@ -149,7 +152,8 @@ and `updated_at`. RLS is on for every table.
 | name | text | 1–60 characters, unique per user |
 | type | text | `cash`, `bank`, `mobile_money`, `card` |
 | currency | char(3) | `GHS` or `USD` — cannot change after the first transaction |
-| opening_balance_minor | bigint | balance on the day you start using the app |
+| opening_balance_minor | bigint | balance on `opening_balance_on`; may be negative (D-29) |
+| opening_balance_on | date | the day the opening balance was true; default today (D-30) |
 | archived_at | timestamptz | hidden from pickers; history is kept |
 
 ### 6.2 `categories`
