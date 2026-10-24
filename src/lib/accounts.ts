@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import { isIsoDate, todayInAccra } from "./dates";
 import { isStillUsed } from "./db-errors";
-import { CURRENCIES, parseAmount, type Currency } from "./money";
+import { convertToGhs, CURRENCIES, parseAmount, type Currency } from "./money";
 
 // DESIGN §6.1 and D-05. The database allows the same four values.
 export const ACCOUNT_TYPES = [
@@ -107,4 +107,16 @@ export function accountSaveError(code: string | undefined, message: string): Acc
     return { currency: "This account has transactions, so its currency cannot change." };
   }
   return null;
+}
+
+// The total balance in GHS (D-37): GHS balances plus the USD total converted
+// at the latest stored rate (one conversion, rounded the M-4 way). Without
+// a rate the USD total is left out, and the screen shows it separately.
+export function totalInGhs(
+  accounts: { currency: Currency; balanceMinor: number }[],
+  latestRate: string | null,
+): { ghsMinor: number; usdConverted: boolean } {
+  const totals = totalsByCurrency(accounts);
+  if (latestRate === null || totals.USD === 0) return { ghsMinor: totals.GHS, usdConverted: false };
+  return { ghsMinor: totals.GHS + convertToGhs(totals.USD, latestRate), usdConverted: true };
 }

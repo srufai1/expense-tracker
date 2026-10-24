@@ -5,10 +5,12 @@ import { Suspense } from "react";
 import { ComingSoon } from "@/components/app-shell/coming-soon";
 import { PageHeader } from "@/components/app-shell/page-header";
 import { Button } from "@/components/ui/button";
-import { totalsByCurrency } from "@/lib/accounts";
+import { totalInGhs, totalsByCurrency } from "@/lib/accounts";
 import { requireUser } from "@/lib/auth";
+import { todayInAccra } from "@/lib/dates";
 
 import { getAccounts } from "./accounts/data";
+import { getRateFor } from "./activity/rates";
 import { MoneyText } from "./accounts/money-text";
 
 export default function HomePage() {
@@ -58,6 +60,8 @@ async function BalanceCard() {
 
   const totals = totalsByCurrency(accounts);
   const hasUsd = accounts.some((account) => account.currency === "USD");
+  const latest = hasUsd ? await getRateFor(todayInAccra()) : null;
+  const total = totalInGhs(accounts, latest?.rate ?? null);
 
   return (
     <Link
@@ -67,11 +71,12 @@ async function BalanceCard() {
       <span className="flex flex-1 flex-col gap-1">
         <span className="text-xs font-semibold opacity-90">Total balance · {accounts.length} accounts</span>
         <MoneyText
-          minor={totals.GHS}
+          minor={total.ghsMinor}
           currency="GHS"
           className="text-3xl font-extrabold tracking-tight text-primary-foreground"
         />
-        {hasUsd ? (
+        {/* USD is shown separately only when no rate is stored to convert it (D-37). */}
+        {hasUsd && !total.usdConverted ? (
           <span className="text-xs opacity-90">
             + <MoneyText minor={totals.USD} currency="USD" className="text-primary-foreground" />
           </span>
