@@ -58,6 +58,9 @@ not silently edit the old one.
 | D-29 | An account's balance may be **negative** (an overdraft, or a card where money is owed). Negative balances are shown in red. (23 Oct 2026) |
 | D-30 | Each account's opening balance has a **date** (`opening_balance_on`, default today). Only transactions on or after that date change the balance. Earlier transactions still count in reports, so older spending can be added for history without being subtracted twice. (23 Oct 2026) |
 | D-31 | **Form errors appear in a pop-up**, on every form. When saving fails, a modal lists what is wrong; tapping OK closes it and moves to the first wrong field. The wrong fields stay outlined in red. (24 Oct 2026) |
+| D-32 | A category that has never been used can be **deleted**. One that has transactions (or a budget) can only be **archived**: hidden from pickers, history kept, so old reports stay correct. The system category Fees & Charges can be neither. (24 Oct 2026) |
+| D-33 | A transfer between accounts in **different currencies** (e.g. USD Cash → GHS Bank) records the **amount sent and the amount received**, as they really happened. The app shows the rate this implies; it does not calculate either amount. (24 Oct 2026) |
+| D-34 | The weekly email is sent with **Resend's test sender** for now: free, no domain needed, and it can only email the account owner's own address. A custom domain can come later. (24 Oct 2026) |
 
 ## 3. What is in version 1, and what is not
 
