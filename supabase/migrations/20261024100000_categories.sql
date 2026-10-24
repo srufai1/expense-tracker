@@ -165,6 +165,12 @@ begin
     raise exception 'seed_starter_categories: not signed in' using errcode = '42501';
   end if;
 
+  -- One run at a time per user. Two first visits at the same moment (two
+  -- tabs) would otherwise both see "no categories" and both insert the
+  -- list; the second would fail on a duplicate name. The lock is released
+  -- when the transaction ends; the waiting call then sees the list exists.
+  perform pg_advisory_xact_lock(hashtextextended('seed_starter_categories:' || uid::text, 0));
+
   if not exists (select 1 from public.categories where user_id = uid) then
     for item in select value from jsonb_array_elements(starter) loop
       pos := pos + 10;
