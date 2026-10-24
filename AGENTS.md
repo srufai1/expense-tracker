@@ -25,6 +25,10 @@ recorded as a new D-nn decision, never by silently editing an old one.
 - **Pages that read data** call `requireUser()` (`src/lib/auth.ts`) inside a
   `<Suspense>` boundary. Never read the session at the top of a layout
   (Cache Components rule).
+- **Form errors appear in a pop-up (D-31):** use `FormErrorDialog`
+  (`src/components/form-error-dialog.tsx`). Mark wrong fields with
+  `aria-invalid` (red outline) and keep each message for screen readers
+  (`sr-only`, linked with `aria-describedby`). No red text under fields.
 - **Mobile first:** design for a 360 px wide screen; touch targets at least
   44 × 44 px; nothing is hidden on small screens. Use the installed shadcn/ui
   components and Lucide icons only.

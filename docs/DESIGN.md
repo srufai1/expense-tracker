@@ -57,6 +57,7 @@ not silently edit the old one.
 | D-28 | Supabase project settings: "Automatically expose new tables" is **off** and "Enable automatic RLS" is **on**. So every migration grants table access to the `authenticated` role explicitly, next to the table's RLS policies. Nothing is reachable through the Data API until a migration opens it. (23 Oct 2026) |
 | D-29 | An account's balance may be **negative** (an overdraft, or a card where money is owed). Negative balances are shown in red. (23 Oct 2026) |
 | D-30 | Each account's opening balance has a **date** (`opening_balance_on`, default today). Only transactions on or after that date change the balance. Earlier transactions still count in reports, so older spending can be added for history without being subtracted twice. (23 Oct 2026) |
+| D-31 | **Form errors appear in a pop-up**, on every form. When saving fails, a modal lists what is wrong; tapping OK closes it and moves to the first wrong field. The wrong fields stay outlined in red. (24 Oct 2026) |
 
 ## 3. What is in version 1, and what is not
 
