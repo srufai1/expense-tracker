@@ -43,8 +43,38 @@ $$;
 
 -- D-25: for every month, the sub-category budgets of a parent may not add up
 -- to more than the parent's budget (a sub-category budget therefore needs a
--- parent budget). After any change, every month from the changed month on
--- where a related budget changes is checked. Runs with the caller's rights.
+-- parent budget). Checks every month from p_from on (all months when p_from
+-- is null) in which a budget of the parent or its children changes, and
+-- returns the first month that breaks the rule, or null. Runs with the
+-- caller's rights (RLS applies).
+create function public.budgets_first_over_month(p_top_id uuid, p_from date)
+returns date
+language plpgsql
+stable
+set search_path = ''
+as $$
+declare
+  month date;
+begin
+  for month in
+    select distinct b.effective_from from public.budgets b
+    join public.categories c on c.id = b.category_id
+    where (c.id = p_top_id or c.parent_id = p_top_id)
+      and (p_from is null or b.effective_from >= p_from)
+    order by 1
+  loop
+    if (select coalesce(sum(public.budget_for_month(c.id, month)), 0)
+          from public.categories c where c.parent_id = p_top_id)
+       > public.budget_for_month(p_top_id, month) then
+      return month;
+    end if;
+  end loop;
+  return null;
+end;
+$$;
+
+-- After a budget is written: the category must be the user's own expense
+-- category, and D-25 must hold from the changed month on.
 create function public.budgets_check()
 returns trigger
 language plpgsql
@@ -52,10 +82,7 @@ set search_path = ''
 as $$
 declare
   category record;
-  top_id uuid;
-  month date;
-  parent_budget bigint;
-  children_total bigint;
+  bad_month date;
 begin
   select c.user_id, c.kind, c.parent_id into category from public.categories c where c.id = new.category_id;
   if not found or category.user_id <> new.user_id then
@@ -66,23 +93,13 @@ begin
   end if;
 
   -- The parent whose children are checked: this category's parent, or the
-  -- category itself when it is top level.
-  top_id := coalesce(category.parent_id, new.category_id);
-
-  for month in
-    select distinct b.effective_from from public.budgets b
-    join public.categories c on c.id = b.category_id
-    where (c.id = top_id or c.parent_id = top_id) and b.effective_from >= new.effective_from
-    union select new.effective_from
-  loop
-    parent_budget := public.budget_for_month(top_id, month);
-    select coalesce(sum(public.budget_for_month(c.id, month)), 0) into children_total
-      from public.categories c where c.parent_id = top_id;
-    if children_total > parent_budget then
-      raise exception 'budgets: the sub-category budgets add up to more than the category budget (%)',
-        to_char(month, 'YYYY-MM') using errcode = '23514';
-    end if;
-  end loop;
+  -- category itself when it is top level. The new row's own month is in
+  -- the list, because the row is already written.
+  bad_month := public.budgets_first_over_month(coalesce(category.parent_id, new.category_id), new.effective_from);
+  if bad_month is not null then
+    raise exception 'budgets: the sub-category budgets add up to more than the category budget (%)',
+      to_char(bad_month, 'YYYY-MM') using errcode = '23514';
+  end if;
   return null;
 end;
 $$;
@@ -91,6 +108,34 @@ $$;
 create constraint trigger budgets_check
   after insert or update on public.budgets
   for each row execute function public.budgets_check();
+
+-- D-25 also holds when a category moves to another parent: its budgets now
+-- count towards the new parent. (Leaving a parent only lowers that
+-- parent's total, so only the new parent is checked.)
+create function public.categories_check_budgets()
+returns trigger
+language plpgsql
+set search_path = ''
+as $$
+declare
+  bad_month date;
+begin
+  if new.parent_id is not null then
+    bad_month := public.budgets_first_over_month(new.parent_id, null);
+    if bad_month is not null then
+      raise exception 'categories: moving this category would make the sub-category budgets add up to more than the category budget (%)',
+        to_char(bad_month, 'YYYY-MM') using errcode = '23514';
+    end if;
+  end if;
+  return null;
+end;
+$$;
+
+create constraint trigger categories_check_budgets
+  after update of parent_id on public.categories
+  for each row
+  when (new.parent_id is distinct from old.parent_id)
+  execute function public.categories_check_budgets();
 
 alter table public.budgets enable row level security;
 
@@ -109,6 +154,8 @@ grant insert (category_id, effective_from, amount_minor) on public.budgets to au
 grant update (amount_minor) on public.budgets to authenticated;
 grant execute on function public.budget_for_month(uuid, date) to authenticated;
 revoke execute on function public.budget_for_month(uuid, date) from public, anon;
+grant execute on function public.budgets_first_over_month(uuid, date) to authenticated;
+revoke execute on function public.budgets_first_over_month(uuid, date) from public, anon;
 
 -- Savings goals: a label (D-24). The money stays in whatever account it is
 -- in; a contribution changes no balance and no spending total.

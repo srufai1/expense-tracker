@@ -112,6 +112,13 @@ export function categorySaveError(code: string | undefined, message: string): Ca
     if (message.includes("cannot become a sub-category")) {
       return { parentId: "This category has sub-categories, so it must stay at the top level." };
     }
+    // D-25, when a category with a budget moves to another parent.
+    const month = /moving this category.*\((\d{4}-\d{2})\)/.exec(message)?.[1];
+    if (month) {
+      return {
+        parentId: `This category has a budget. Under this main category, the sub-category budgets would add up to more than the main budget in ${month}. Raise the main budget first, or choose another main category.`,
+      };
+    }
     if (message.includes("same kind")) {
       return { parentId: "Choose a top-level category of the same kind." };
     }

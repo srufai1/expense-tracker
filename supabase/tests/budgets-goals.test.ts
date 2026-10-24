@@ -97,6 +97,45 @@ describe("budgets", () => {
     await setBudget(ALICE, repairs, "2026-11-01", 50);
   });
 
+  it("checks D-25 again when a category moves to another parent", async () => {
+    const food = await addCategory(ALICE, "Move food");
+    const home = await addCategory(ALICE, "Move home");
+    const bare = await addCategory(ALICE, "Move bare");
+    const eatingOut = await addCategory(ALICE, "Move eating out", { parent: food });
+    await setBudget(ALICE, food, "2026-10-01", 100_000);
+    await setBudget(ALICE, home, "2026-10-01", 50_000);
+    await setBudget(ALICE, eatingOut, "2026-10-01", 60_000);
+    const move = (parent: string | null) =>
+      rows(ALICE, "update public.categories set parent_id = $1 where id = $2", [parent, eatingOut]);
+
+    // GHS 600 under a parent with GHS 500: refused.
+    await expect(move(home)).rejects.toThrow(/moving this category.*add up to more.*2026-10/);
+    // Under a parent without a budget: refused too (it would also vanish from the overview).
+    await expect(move(bare)).rejects.toThrow(/moving this category.*add up to more.*2026-10/);
+    // A top-level category with a budget cannot join a parent too small for it.
+    const travel = await addCategory(ALICE, "Move travel");
+    await setBudget(ALICE, travel, "2026-11-01", 80_000);
+    await expect(
+      rows(ALICE, "update public.categories set parent_id = $1 where id = $2", [home, travel]),
+    ).rejects.toThrow(/moving this category.*add up to more.*2026-11/);
+    // To the top level: always fine.
+    await move(null);
+    // Back under a parent big enough: fine.
+    await move(food);
+    // A later month counts too.
+    await move(null);
+    await setBudget(ALICE, food, "2027-02-01", 59_999);
+    await expect(move(food)).rejects.toThrow(/moving this category.*add up to more.*2027-02/);
+  });
+
+  it("lets categories without budgets move freely", async () => {
+    const a = await addCategory(ALICE, "Move free a");
+    const b = await addCategory(ALICE, "Move free b");
+    const child = await addCategory(ALICE, "Move free child", { parent: a });
+    await rows(ALICE, "update public.categories set parent_id = $1 where id = $2", [b, child]);
+    await rows(ALICE, "update public.categories set name = 'Move free renamed' where id = $1", [child]);
+  });
+
   it("keeps history: a budget is never deleted, it is set to 0", async () => {
     const fun = await addCategory(ALICE, "Budget history fun");
     await setBudget(ALICE, fun, "2026-10-01", 30_000);
