@@ -1,4 +1,4 @@
-import { ArrowLeftRight, ChevronLeft, ChevronRight, Plus, Search } from "lucide-react";
+import { ArrowLeftRight, ChevronLeft, ChevronRight, FileSpreadsheet, Plus, Search } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
@@ -133,6 +133,15 @@ async function ActivityList({ searchParams }: { searchParams: PageProps<"/activi
         <Total label="In" minor={totals.inMinor} />
         <Total label="Out" minor={totals.outMinor} />
       </section>
+
+      {/* The whole month, without the search or filter: the same workbook
+          as the month's report (D-20). A plain link, so the file downloads. */}
+      <Button asChild variant="outline" className="h-11">
+        <a href={`/api/export.xlsx?period=month&date=${month}-01`}>
+          <FileSpreadsheet aria-hidden="true" />
+          Download {formatMonth(month)} (Excel)
+        </a>
+      </Button>
 
       {items.length === 0 ? (
         <p className="rounded-2xl border bg-card p-5 text-sm text-muted-foreground">

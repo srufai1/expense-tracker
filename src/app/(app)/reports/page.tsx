@@ -1,12 +1,13 @@
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, FileSpreadsheet, FileText } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 
 import { PageHeader } from "@/components/app-shell/page-header";
+import { Button } from "@/components/ui/button";
 import { requireUser } from "@/lib/auth";
 import { todayInAccra } from "@/lib/dates";
-import { parseReportParams, periodHref, periodTitle, shiftPeriod } from "@/lib/reports/params";
+import { parseReportParams, periodHref, periodQuery, periodTitle, shiftPeriod } from "@/lib/reports/params";
 import { periodFor, PERIOD_KINDS, type PeriodKind } from "@/lib/reports/periods";
 import { cn } from "@/lib/utils";
 
@@ -68,6 +69,21 @@ async function Report({ searchParams }: { searchParams: PageProps<"/reports">["s
           <span className="size-11 shrink-0" aria-hidden="true" />
         )}
       </nav>
+      {/* Plain links: the files download instead of opening a page (D-20). */}
+      <div className="grid grid-cols-2 gap-2">
+        <Button asChild variant="outline" className="h-11">
+          <a href={`/api/report.pdf?${periodQuery(period)}`}>
+            <FileText aria-hidden="true" />
+            Download PDF
+          </a>
+        </Button>
+        <Button asChild variant="outline" className="h-11">
+          <a href={`/api/export.xlsx?${periodQuery(period)}`}>
+            <FileSpreadsheet aria-hidden="true" />
+            Excel
+          </a>
+        </Button>
+      </div>
       <ReportView report={report} today={today} />
     </>
   );

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { parseReportParams, periodHref, periodTitle, shiftPeriod } from "./params";
+import { downloadName, parseReportParams, periodHref, periodTitle, shiftPeriod } from "./params";
 import { periodFor } from "./periods";
 
 const TODAY = "2026-10-24";
@@ -76,5 +76,16 @@ describe("periodTitle", () => {
     expect(periodTitle(periodFor("month", TODAY))).toBe("October 2026");
     expect(periodTitle(periodFor("year", TODAY))).toBe("2026");
     expect(periodTitle({ kind: "custom", first: "2026-10-05", last: "2026-10-05" })).toBe("5 Oct 2026");
+  });
+});
+
+describe("downloadName", () => {
+  it("names a report file by its kind and dates", () => {
+    expect(downloadName(periodFor("week", TODAY), "pdf")).toBe("weekly-report-2026-10-19-to-2026-10-25.pdf");
+    expect(downloadName(periodFor("month", TODAY), "xlsx")).toBe("monthly-report-2026-10.xlsx");
+    expect(downloadName(periodFor("year", TODAY), "pdf")).toBe("year-report-2026.pdf");
+    expect(downloadName({ kind: "custom", first: "2026-09-01", last: "2026-09-30" }, "pdf")).toBe(
+      "report-2026-09-01-to-2026-09-30.pdf",
+    );
   });
 });

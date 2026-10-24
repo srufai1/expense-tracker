@@ -36,10 +36,15 @@ export function shiftPeriod(period: Period, delta: -1 | 1): Period {
   return { kind: "custom", first: addDays(period.first, length * delta), last: addDays(period.last, length * delta) };
 }
 
-export function periodHref(period: Period): string {
+// The address query of a period, shared by the page and its downloads.
+export function periodQuery(period: Period): string {
   return period.kind === "custom"
-    ? `/reports?period=custom&from=${period.first}&to=${period.last}`
-    : `/reports?period=${period.kind}&date=${period.first}`;
+    ? `period=custom&from=${period.first}&to=${period.last}`
+    : `period=${period.kind}&date=${period.first}`;
+}
+
+export function periodHref(period: Period): string {
+  return `/reports?${periodQuery(period)}`;
 }
 
 // A fixed list: newer browsers write "Sept" for en-GB, older ones "Sep".
@@ -56,4 +61,12 @@ export function periodTitle(period: Period): string {
   const sameMonth = period.first.slice(0, 7) === period.last.slice(0, 7);
   const start = sameMonth ? String(Number(period.first.slice(8, 10))) : day(period.first);
   return `${start} – ${day(period.last)} ${lastYear}`;
+}
+
+// The download's file name: "weekly-report-2026-10-19-to-2026-10-25.pdf".
+export function downloadName(period: Period, extension: "pdf" | "xlsx"): string {
+  if (period.kind === "month") return `monthly-report-${period.first.slice(0, 7)}.${extension}`;
+  if (period.kind === "year") return `year-report-${period.first.slice(0, 4)}.${extension}`;
+  const name = period.kind === "week" ? "weekly-report" : "report";
+  return `${name}-${period.first}-to-${period.last}.${extension}`;
 }
