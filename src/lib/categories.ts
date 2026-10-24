@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { isStillUsed } from "./db-errors";
+
 // DESIGN §6.2: two levels (Food → Groceries), expense or income.
 export const CATEGORY_KINDS = ["expense", "income"] as const;
 export type CategoryKind = (typeof CATEGORY_KINDS)[number];
@@ -122,7 +124,7 @@ export function categoryDeleteError(code: string | undefined, message: string): 
   if (code === "23514" && message.includes("system category")) {
     return "Fees & Charges is needed for transfer fees, so it cannot be deleted.";
   }
-  if (code === "23503") {
+  if (isStillUsed(code)) {
     return "This category is in use (it has sub-categories, transactions or budgets). Archive it instead: it is hidden, and its history stays.";
   }
   return "Check your internet connection and try again.";

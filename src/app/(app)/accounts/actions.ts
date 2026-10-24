@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-import { parseAccountForm, type AccountInput } from "@/lib/accounts";
+import { accountDeleteError, accountSaveError, parseAccountForm, type AccountInput } from "@/lib/accounts";
 import { requireUser } from "@/lib/auth";
 import { formValues } from "@/lib/form-data";
 import { createClient } from "@/lib/supabase/server";
@@ -23,13 +23,10 @@ function toRow(input: AccountInput) {
 }
 
 // A database answer turned into a message for the form.
-function failure(code: string | undefined, values: Record<string, string>): AccountFormState {
-  // 23505: unique_violation — the one unique rule is the account name.
-  if (code === "23505") {
-    return { errors: { name: "You already have an account with this name." }, values };
-  }
-  // Shown under the pop-up title "Could not save" (D-31).
-  return { errors: {}, formError: CHECK_CONNECTION, values };
+function failure(error: { code?: string; message: string }, values: Record<string, string>): AccountFormState {
+  const errors = accountSaveError(error.code, error.message);
+  // Otherwise shown under the pop-up title "Could not save" (D-31).
+  return errors ? { errors, values } : { errors: {}, formError: CHECK_CONNECTION, values };
 }
 
 function refreshAccountPages() {
@@ -48,7 +45,7 @@ export async function createAccount(
 
   const supabase = await createClient();
   const { error } = await supabase.from("accounts").insert(toRow(parsed.value));
-  if (error) return failure(error.code, values);
+  if (error) return failure(error, values);
 
   refreshAccountPages();
   redirect("/accounts");
@@ -69,7 +66,7 @@ export async function updateAccount(
     .from("accounts")
     .update(toRow(parsed.value), { count: "exact" })
     .eq("id", id);
-  if (error) return failure(error.code, values);
+  if (error) return failure(error, values);
   // Row-Level Security hides other users' rows, so 0 means "not yours".
   if (count === 0) return { errors: {}, formError: "This account no longer exists.", values };
 
@@ -96,12 +93,7 @@ export async function deleteAccount(id: string): Promise<string | undefined> {
   await requireUser();
   const supabase = await createClient();
   const { error } = await supabase.from("accounts").delete().eq("id", id);
-  if (error) {
-    // 23503: transactions still point at this account (ON DELETE RESTRICT).
-    return error.code === "23503"
-      ? "This account has transactions, so it cannot be deleted. Archive it instead: it is hidden, and its history stays."
-      : CHECK_CONNECTION;
-  }
+  if (error) return accountDeleteError(error.code);
 
   refreshAccountPages();
   redirect("/accounts");

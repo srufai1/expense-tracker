@@ -64,8 +64,71 @@ export type Database = {
         };
         Relationships: [];
       };
+      transactions: {
+        Row: {
+          id: string;
+          user_id: string;
+          kind: "expense" | "income" | "transfer";
+          occurred_on: string;
+          account_id: string;
+          category_id: string | null;
+          amount_minor: number;
+          currency: "GHS" | "USD";
+          // numeric arrives as a JSON number.
+          fx_rate: number;
+          fx_source: "none" | "auto" | "manual";
+          fx_rate_date: string | null;
+          amount_ghs_minor: number;
+          account_amount_minor: number;
+          to_account_id: string | null;
+          to_amount_minor: number | null;
+          parent_transaction_id: string | null;
+          recurring_rule_id: string | null;
+          occurrence_date: string | null;
+          note: string;
+          receipt_path: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        // Only the columns granted in this build step (see the migration).
+        Insert: {
+          id?: string;
+          kind: "expense" | "income";
+          occurred_on: string;
+          account_id: string;
+          category_id: string;
+          amount_minor: number;
+          currency: "GHS" | "USD";
+          fx_rate?: number | string;
+          fx_source?: "none" | "auto" | "manual";
+          fx_rate_date?: string | null;
+          amount_ghs_minor: number;
+          account_amount_minor: number;
+          note?: string;
+        };
+        Update: {
+          kind?: "expense" | "income";
+          occurred_on?: string;
+          account_id?: string;
+          category_id?: string;
+          amount_minor?: number;
+          currency?: "GHS" | "USD";
+          fx_rate?: number | string;
+          fx_source?: "none" | "auto" | "manual";
+          fx_rate_date?: string | null;
+          amount_ghs_minor?: number;
+          account_amount_minor?: number;
+          note?: string;
+        };
+        Relationships: [];
+      };
     };
-    Views: { [_ in never]: never };
+    Views: {
+      account_balances: {
+        Row: { account_id: string; balance_minor: number; has_transactions: boolean };
+        Relationships: [];
+      };
+    };
     Functions: {
       seed_starter_categories: { Args: Record<string, never>; Returns: undefined };
     };

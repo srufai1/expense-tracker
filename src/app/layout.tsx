@@ -43,7 +43,11 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="flex min-h-full flex-col">
         <ThemeProvider>
           {children}
-          <Toaster />
+          {/* Above the bottom menu, so it stays usable while a toast shows. */}
+          <Toaster
+            offset={{ bottom: "calc(5.5rem + env(safe-area-inset-bottom))" }}
+            mobileOffset={{ bottom: "calc(5.5rem + env(safe-area-inset-bottom))" }}
+          />
         </ThemeProvider>
       </body>
     </html>

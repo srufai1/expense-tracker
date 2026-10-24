@@ -13,9 +13,10 @@ export type Account = {
   openingBalanceMinor: number;
   openingBalanceOn: string;
   archived: boolean;
-  // Calculated, never stored (M-8). There are no transactions yet, so the
-  // balance is the opening balance; build step 4 adds the transactions.
+  // Calculated by the database on every read, never stored (M-8, D-30).
   balanceMinor: number;
+  // Once it has transactions, the account's currency is locked.
+  hasTransactions: boolean;
 };
 
 const COLUMNS = "id, name, type, currency, opening_balance_minor, opening_balance_on, archived_at";
@@ -30,7 +31,9 @@ type Row = {
   archived_at: string | null;
 };
 
-function toAccount(row: Row): Account {
+type Balance = { balanceMinor: number; hasTransactions: boolean };
+
+function toAccount(row: Row, balance: Balance | undefined): Account {
   return {
     id: row.id,
     name: row.name,
@@ -39,8 +42,24 @@ function toAccount(row: Row): Account {
     openingBalanceMinor: row.opening_balance_minor,
     openingBalanceOn: row.opening_balance_on,
     archived: row.archived_at !== null,
-    balanceMinor: row.opening_balance_minor,
+    // No balance row only if the account was added between the two reads.
+    balanceMinor: balance?.balanceMinor ?? row.opening_balance_minor,
+    hasTransactions: balance?.hasTransactions ?? false,
   };
+}
+
+// Balances from the account_balances view (see the transactions migration).
+async function getBalances(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  accountId?: string,
+): Promise<Map<string, Balance>> {
+  let query = supabase.from("account_balances").select("account_id, balance_minor, has_transactions");
+  if (accountId) query = query.eq("account_id", accountId);
+  const { data, error } = await query;
+  if (error) throw new Error(`Could not load balances: ${error.message}`);
+  return new Map(
+    data.map((row) => [row.account_id, { balanceMinor: row.balance_minor, hasTransactions: row.has_transactions }]),
+  );
 }
 
 // All of the signed-in user's accounts, oldest first. Row-Level Security
@@ -53,7 +72,8 @@ export async function getAccounts(): Promise<Account[]> {
     .select(COLUMNS)
     .order("created_at", { ascending: true });
   if (error) throw new Error(`Could not load accounts: ${error.message}`);
-  return data.map(toAccount);
+  const balances = await getBalances(supabase);
+  return data.map((row) => toAccount(row, balances.get(row.id)));
 }
 
 // One account, or null when it does not exist or belongs to someone else.
@@ -63,5 +83,7 @@ export async function getAccount(id: string): Promise<Account | null> {
   const { data, error } = await supabase.from("accounts").select(COLUMNS).eq("id", id).maybeSingle();
   // 22P02: the id in the address is not a valid uuid — treat as "not found".
   if (error && error.code !== "22P02") throw new Error(`Could not load the account: ${error.message}`);
-  return data ? toAccount(data) : null;
+  if (!data) return null;
+  const balances = await getBalances(supabase, data.id);
+  return toAccount(data, balances.get(data.id));
 }

@@ -39,6 +39,8 @@ const Toaster = ({ ...props }: ToasterProps) => {
       toastOptions={{
         classNames: {
           toast: "cn-toast",
+          // Touch targets at least 44 × 44 px (AGENTS.md, mobile first).
+          actionButton: "!h-11 !min-w-11 !px-4 !text-sm",
         },
       }}
       {...props}

@@ -38,6 +38,7 @@ export function AccountForm({
   initial,
   submitLabel,
   today,
+  currencyLocked = false,
 }: {
   action: (state: AccountFormState, formData: FormData) => Promise<AccountFormState>;
   initial: Values;
@@ -45,6 +46,8 @@ export function AccountForm({
   // Today's date in Accra, from the server. Reading the clock while rendering
   // would break Cache Components pre-rendering.
   today: string;
+  // An account with transactions keeps its currency (the database agrees).
+  currencyLocked?: boolean;
 }) {
   const [state, formAction, pending] = useActionState(action, initialAccountFormState);
   // A failed check in the browser. A new object each time, so the error
@@ -121,32 +124,43 @@ export function AccountForm({
         <FieldError id="type-error" message={errors.type} />
       </fieldset>
 
-      <fieldset className="flex flex-col gap-2" aria-describedby={errors.currency ? "currency-error" : undefined}>
-        <legend className="mb-2 text-sm font-medium">Currency</legend>
-        <div
-          className={cn(
-            "grid grid-cols-2 gap-1 rounded-xl bg-muted p-1",
-            errors.currency && "ring-2 ring-destructive ring-offset-2 ring-offset-background",
-          )}
-        >
-          {CURRENCIES.map((currency) => (
-            <label
-              key={currency}
-              className="flex min-h-11 cursor-pointer items-center justify-center rounded-lg text-sm font-bold text-muted-foreground has-[:checked]:bg-card has-[:checked]:text-foreground has-[:checked]:shadow-sm has-[:focus-visible]:ring-3 has-[:focus-visible]:ring-ring/50"
-            >
-              <input
-                type="radio"
-                name="currency"
-                value={currency}
-                defaultChecked={values.currency === currency}
-                className="sr-only"
-              />
-              {currency}
-            </label>
-          ))}
+      {currencyLocked ? (
+        <div className="flex flex-col gap-1">
+          <span className="text-sm font-medium">Currency</span>
+          <input type="hidden" name="currency" value={values.currency} />
+          <p className="text-base font-bold">{values.currency}</p>
+          <p className="text-xs text-muted-foreground">
+            This account has transactions, so its currency cannot change.
+          </p>
         </div>
-        <FieldError id="currency-error" message={errors.currency} />
-      </fieldset>
+      ) : (
+        <fieldset className="flex flex-col gap-2" aria-describedby={errors.currency ? "currency-error" : undefined}>
+          <legend className="mb-2 text-sm font-medium">Currency</legend>
+          <div
+            className={cn(
+              "grid grid-cols-2 gap-1 rounded-xl bg-muted p-1",
+              errors.currency && "ring-2 ring-destructive ring-offset-2 ring-offset-background",
+            )}
+          >
+            {CURRENCIES.map((currency) => (
+              <label
+                key={currency}
+                className="flex min-h-11 cursor-pointer items-center justify-center rounded-lg text-sm font-bold text-muted-foreground has-[:checked]:bg-card has-[:checked]:text-foreground has-[:checked]:shadow-sm has-[:focus-visible]:ring-3 has-[:focus-visible]:ring-ring/50"
+              >
+                <input
+                  type="radio"
+                  name="currency"
+                  value={currency}
+                  defaultChecked={values.currency === currency}
+                  className="sr-only"
+                />
+                {currency}
+              </label>
+            ))}
+          </div>
+          <FieldError id="currency-error" message={errors.currency} />
+        </fieldset>
+      )}
 
       <Field
         id="openingBalance"
