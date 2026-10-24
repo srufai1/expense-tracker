@@ -75,14 +75,15 @@ export function weeklyEmail(report: Report, meta: { title: string; appName: stri
 
 // Who gets this week's email: every user with an email address whose
 // weekly email is on (it is on unless they turned it off, D-17), and whose
-// week is not already sent. A failed week is tried again (§6.8).
+// week has no log row yet or a "failed" one (§6.8). "sending" means a run
+// claimed it and may have sent it: never sent again automatically.
 export function weeklyRecipients(
   users: { id: string; email: string | null }[],
   settings: { userId: string; weeklyEmail: boolean }[],
-  logged: { userId: string; status: "sent" | "failed" }[],
+  logged: { userId: string; status: "sending" | "sent" | "failed" }[],
 ): { id: string; email: string }[] {
   const off = new Set(settings.filter((s) => !s.weeklyEmail).map((s) => s.userId));
-  const sent = new Set(logged.filter((l) => l.status === "sent").map((l) => l.userId));
+  const sent = new Set(logged.filter((l) => l.status !== "failed").map((l) => l.userId));
   return users
     .filter((user): user is { id: string; email: string } => user.email !== null && user.email !== "")
     .filter((user) => !off.has(user.id) && !sent.has(user.id));

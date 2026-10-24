@@ -48,6 +48,15 @@ export async function runWeeklyEmail(
   const problems: string[] = [];
   let sent = 0;
   for (const user of recipients) {
+    // Claim the week first (see the migration): another run may be sending
+    // it at this moment. Only the run that changed a row goes on.
+    const claimed = await claimWeek(supabase, user.id, period.first);
+    if (claimed === "error") {
+      problems.push(`${user.id}: could not claim the week`);
+      continue;
+    }
+    if (!claimed) continue;
+
     let result: { ok: true } | { ok: false; error: string };
     try {
       // Filtered by user_id inside: this client has no RLS.
@@ -58,20 +67,21 @@ export async function runWeeklyEmail(
         to: user.email,
         ...weeklyEmail(report, { title, appName: appConfig.name }),
         attachments: [{ filename: downloadName(period, "pdf"), content: pdf }],
+        idempotencyKey: `weekly-report/${user.id}/${period.first}`,
       });
     } catch (error) {
       result = { ok: false, error: (error as Error).message };
     }
-    const { error: logError } = await supabase.from("report_emails").upsert(
-      {
-        user_id: user.id,
-        week_start: period.first,
+    // If this write fails, the row stays "sending": never sent twice.
+    const { error: logError } = await supabase
+      .from("report_emails")
+      .update({
         status: result.ok ? "sent" : "failed",
         sent_at: result.ok ? new Date().toISOString() : null,
         error: result.ok ? "" : result.error.slice(0, 500),
-      },
-      { onConflict: "user_id,week_start" },
-    );
+      })
+      .eq("user_id", user.id)
+      .eq("week_start", period.first);
     if (result.ok) sent += 1;
     else problems.push(`${user.id}: ${result.error}`);
     if (logError) problems.push(`${user.id}: could not log the email: ${logError.message}`);
@@ -79,4 +89,33 @@ export async function runWeeklyEmail(
 
   const summary = `sent ${sent} of ${recipients.length} email(s) for ${title}`;
   return problems.length > 0 ? `failed: ${summary}; problems: ${problems.join("; ")}` : summary;
+}
+
+// true: this run owns the week and may send it. false: another run has it
+// (or it is already sent). The insert does nothing if the row exists; the
+// update only moves "failed" to "sending". Each is one statement, so two
+// runs at once cannot both win.
+async function claimWeek(
+  supabase: ReturnType<typeof createAdminClient>,
+  userId: string,
+  weekStart: string,
+): Promise<boolean | "error"> {
+  const inserted = await supabase
+    .from("report_emails")
+    .upsert({ user_id: userId, week_start: weekStart, status: "sending", sent_at: null }, {
+      onConflict: "user_id,week_start",
+      ignoreDuplicates: true,
+    })
+    .select("user_id");
+  if (inserted.error) return "error";
+  if (inserted.data.length > 0) return true;
+  const retried = await supabase
+    .from("report_emails")
+    .update({ status: "sending", error: "" })
+    .eq("user_id", userId)
+    .eq("week_start", weekStart)
+    .eq("status", "failed")
+    .select("user_id");
+  if (retried.error) return "error";
+  return retried.data.length > 0;
 }

@@ -9,6 +9,7 @@ const EMAIL = {
   html: "<p>Hi</p>",
   text: "Hi",
   attachments: [{ filename: "weekly-report.pdf", content: Buffer.from("%PDF-1.3") }],
+  idempotencyKey: "weekly-report/u1/2026-10-19",
 };
 
 function fakeFetch(status: number, body: unknown) {
@@ -28,6 +29,8 @@ describe("sendWithResend", () => {
     expect(calls[0].url).toBe(RESEND_URL);
     expect(calls[0].init.method).toBe("POST");
     expect((calls[0].init.headers as Record<string, string>).Authorization).toBe("Bearer re_test_key");
+    // Resend sends one email per key, even if the same request comes twice.
+    expect((calls[0].init.headers as Record<string, string>)["Idempotency-Key"]).toBe("weekly-report/u1/2026-10-19");
     expect(JSON.parse(String(calls[0].init.body))).toEqual({
       from: EMAIL.from,
       to: ["me@example.com"],

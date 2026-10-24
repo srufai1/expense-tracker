@@ -140,7 +140,9 @@ async function WeeklyEmail() {
         {settings.last
           ? settings.last.status === "sent"
             ? ` Last sent for the week of ${formatRateDate(settings.last.weekStart)}.`
-            : ` The email for the week of ${formatRateDate(settings.last.weekStart)} could not be sent yet; it is tried again on the next run.`
+            : settings.last.status === "failed"
+              ? ` The email for the week of ${formatRateDate(settings.last.weekStart)} could not be sent yet; it is tried again on the next run.`
+              : ` The email for the week of ${formatRateDate(settings.last.weekStart)} could not be confirmed as sent. It is not sent again, so it never arrives twice.`
           : ""}
       </p>
     </div>

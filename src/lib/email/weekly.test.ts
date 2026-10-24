@@ -131,10 +131,12 @@ describe("weeklyRecipients", () => {
         [
           { userId: "c", status: "sent" },
           { userId: "e", status: "failed" },
+          // Claimed by a run that did not finish: it may have been sent, so
+          // it is never sent again automatically.
+          { userId: "a", status: "sending" },
         ],
       ),
     ).toEqual([
-      { id: "a", email: "a@example.com" },
       // A failed week is tried again.
       { id: "e", email: "e@example.com" },
     ]);

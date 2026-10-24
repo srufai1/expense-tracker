@@ -29,8 +29,12 @@ grant insert (weekly_email) on public.settings to authenticated;
 grant update (weekly_email) on public.settings to authenticated;
 
 -- One row per user and week: written by the daily job only, so the same
--- week's email is never sent twice. A failed week is tried again on the
--- next run, until it is sent.
+-- week's email is never sent twice. Before sending, a run claims the week by
+-- writing "sending" (an insert that does nothing if the row exists, or an
+-- update from "failed"); only the run that changed a row sends. A failed
+-- week is claimed again on the next run. A week left in "sending" (the run
+-- stopped mid-way) may have been sent, so it is never sent again
+-- automatically.
 create table public.report_emails (
   user_id uuid not null references auth.users (id) on delete cascade,
   -- The Monday the week starts on (D-14).
@@ -42,7 +46,7 @@ create table public.report_emails (
 
   constraint report_emails_pkey primary key (user_id, week_start),
   constraint report_emails_week_monday check (extract(isodow from week_start) = 1),
-  constraint report_emails_status_valid check (status in ('sent', 'failed')),
+  constraint report_emails_status_valid check (status in ('sending', 'sent', 'failed')),
   constraint report_emails_sent_at check ((status = 'sent') = (sent_at is not null)),
   constraint report_emails_error_length check (char_length(error) <= 500)
 );

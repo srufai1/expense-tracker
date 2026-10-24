@@ -10,6 +10,8 @@ export type OutgoingEmail = {
   html: string;
   text: string;
   attachments: { filename: string; content: Buffer }[];
+  // Resend sends one email per key, even if the request is repeated.
+  idempotencyKey: string;
 };
 
 export async function sendWithResend(
@@ -20,7 +22,11 @@ export async function sendWithResend(
   try {
     const response = await fetchFn(RESEND_URL, {
       method: "POST",
-      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+        "Idempotency-Key": email.idempotencyKey,
+      },
       body: JSON.stringify({
         from: email.from,
         to: [email.to],

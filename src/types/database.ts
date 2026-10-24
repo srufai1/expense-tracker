@@ -258,14 +258,20 @@ export type Database = {
         Row: {
           user_id: string;
           week_start: string;
-          status: "sent" | "failed";
+          status: "sending" | "sent" | "failed";
           sent_at: string | null;
           error: string;
           updated_at: string;
         };
         // Written by the daily job only (service_role).
-        Insert: { user_id: string; week_start: string; status: "sent" | "failed"; sent_at: string | null; error?: string };
-        Update: { status?: "sent" | "failed"; sent_at?: string | null; error?: string };
+        Insert: {
+          user_id: string;
+          week_start: string;
+          status: "sending" | "sent" | "failed";
+          sent_at: string | null;
+          error?: string;
+        };
+        Update: { status?: "sending" | "sent" | "failed"; sent_at?: string | null; error?: string };
         Relationships: [];
       };
       fx_rates: {

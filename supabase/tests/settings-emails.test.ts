@@ -80,9 +80,35 @@ describe("report_emails (the log that stops a week being sent twice)", () => {
     // A week starts on a Monday (D-14).
     await expect(log(ALICE, "2026-10-20", "sent", "2026-10-26T07:00:00Z")).rejects.toThrow(/report_emails_week_monday/);
     await expect(log(ALICE, "2026-10-05", "lost", null)).rejects.toThrow(/report_emails_status_valid/);
+    await expect(log(ALICE, "2026-10-05", "sending", "2026-10-06T07:00:00Z")).rejects.toThrow(/report_emails_sent_at/);
     // "sent" has a time; "failed" does not.
     await expect(log(ALICE, "2026-10-05", "sent", null)).rejects.toThrow(/report_emails_sent_at/);
     await expect(log(ALICE, "2026-10-05", "failed", "2026-10-06T07:00:00Z")).rejects.toThrow(/report_emails_sent_at/);
+  });
+
+  it("lets only one run claim a week before sending, so it is never sent twice", async () => {
+    // The claim the daily job makes: insert "sending", or do nothing if the
+    // week already has a row. Two runs at once: only the first gets a row back.
+    const claim = () =>
+      service<{ user_id: string }>(
+        `insert into public.report_emails (user_id, week_start, status, sent_at) values ($1, '2026-10-12', 'sending', null)
+         on conflict (user_id, week_start) do nothing returning user_id`,
+        [ALICE],
+      );
+    expect((await claim()).rows).toHaveLength(1);
+    expect((await claim()).rows).toHaveLength(0);
+    // A failed week is claimed again by moving it from failed to sending;
+    // a week already sending or sent cannot be claimed.
+    const reclaim = (userId: string, week: string) =>
+      service<{ user_id: string }>(
+        `update public.report_emails set status = 'sending', error = ''
+         where user_id = $1 and week_start = $2 and status = 'failed' returning user_id`,
+        [userId, week],
+      );
+    expect((await reclaim(ALICE, "2026-10-12")).rows).toHaveLength(0);
+    await log(BOB, "2026-10-12", "failed", null, "Resend answered 500.");
+    expect((await reclaim(BOB, "2026-10-12")).rows).toHaveLength(1);
+    expect((await reclaim(BOB, "2026-10-12")).rows).toHaveLength(0);
   });
 
   it("lets the daily job turn a failed week into a sent one", async () => {
@@ -91,7 +117,7 @@ describe("report_emails (the log that stops a week being sent twice)", () => {
       [BOB],
     );
     const { rows: bob } = await service<{ status: string }>(
-      "select status from public.report_emails where user_id = $1",
+      "select status from public.report_emails where user_id = $1 and week_start = '2026-10-19'",
       [BOB],
     );
     expect(bob).toEqual([{ status: "sent" }]);
