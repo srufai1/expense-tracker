@@ -4,6 +4,7 @@ import { requireUser } from "@/lib/auth";
 import type { CategoryRow } from "@/lib/categories";
 import { categoryPath } from "@/lib/categories";
 import type { Currency } from "@/lib/money";
+import { fetchAllPages } from "@/lib/pages";
 import { createClient } from "@/lib/supabase/server";
 import type { ActivityItem, EntryKind } from "@/lib/transactions";
 
@@ -43,19 +44,27 @@ const LIST_COLUMNS =
   "id, kind, occurred_on, account_id, category_id, amount_minor, currency, amount_ghs_minor, note, to_account_id, to_amount_minor";
 
 // Everything in one period, newest first: expenses, income, transfers and
-// transfer fees.
+// transfer fees. Read page by page: a year report covers two years of
+// data, which can pass Supabase's 1,000-row limit.
 export async function getTransactionsBetween(first: string, last: string) {
   await requireUser();
   const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("transactions")
-    .select(LIST_COLUMNS)
-    .gte("occurred_on", first)
-    .lte("occurred_on", last)
-    .order("occurred_on", { ascending: false })
-    .order("created_at", { ascending: false });
-  if (error) throw new Error(`Could not load transactions: ${error.message}`);
-  return data;
+  try {
+    return await fetchAllPages((from, to) =>
+      supabase
+        .from("transactions")
+        .select(LIST_COLUMNS)
+        .gte("occurred_on", first)
+        .lte("occurred_on", last)
+        .order("occurred_on", { ascending: false })
+        .order("created_at", { ascending: false })
+        // id last, so the order is fixed and pages never overlap.
+        .order("id")
+        .range(from, to),
+    );
+  } catch (error) {
+    throw new Error(`Could not load transactions: ${(error as Error).message}`);
+  }
 }
 
 // Rows from getTransactionsBetween with the names the list shows.
