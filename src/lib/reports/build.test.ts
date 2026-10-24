@@ -147,6 +147,7 @@ describe("buildReport: a week (§7.1)", () => {
   });
 
   it("has a bar per day with spending and income", () => {
+    expect(report.chartUnit).toBe("day");
     expect(report.chart).toHaveLength(7);
     expect(report.chart[0]).toEqual({ first: "2026-10-19", last: "2026-10-19", spendingMinor: 20_000, incomeMinor: 0 });
     expect(report.chart[4]).toEqual({ first: "2026-10-23", last: "2026-10-23", spendingMinor: 350, incomeMinor: 500_000 });

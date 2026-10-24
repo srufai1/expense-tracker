@@ -30,10 +30,13 @@ export function ReportView({ report, today }: { report: Report; today: string })
         <p className="rounded-2xl border bg-card p-5 text-sm text-muted-foreground">
           Nothing was recorded in this {NOUN[period.kind]}.
         </p>
-      ) : (
+      ) : null}
+      {/* Even with nothing recorded, budget, goal and "missing days"
+          suggestions still apply (§7.4). */}
+      <Suggestions items={report.suggestions} />
+      {empty ? null : (
         <>
           <Chart report={report} today={today} />
-          <Suggestions items={report.suggestions} />
           <Highlights report={report} today={today} />
           <Categories report={report} />
         </>
@@ -124,7 +127,7 @@ function Chart({ report, today }: { report: Report; today: string }) {
   const bars = report.chart;
   const max = Math.max(...bars.map((bar) => bar.spendingMinor));
   const top = bars.find((bar) => bar.spendingMinor === max);
-  const unit = report.period.kind === "year" ? "month" : bars.length > 0 && bars[0].first !== bars[0].last ? "week" : "day";
+  const unit = report.chartUnit;
   const topName =
     top && unit === "month" ? formatMonth(top.first.slice(0, 7)) : top ? dayLabel(top.first, today) : "";
   return (

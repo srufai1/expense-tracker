@@ -75,19 +75,27 @@ export function averageWindows(period: Period): DateRange[] {
   return [];
 }
 
-// The bars of the chart: one per day for a week, a month or a custom period
-// of up to 62 days; one per week (Monday to Sunday, cut to the period) for a
-// longer custom period; one per month for a year.
+// What one bar of the chart covers (§7.2): a day for a week, a month or a
+// custom period of up to 62 days; a week for a longer custom period; a month
+// for a year. Decided from the period, never from one bar: a long custom
+// period that starts on a Sunday begins with a one-day bar.
+export function chartUnit(period: Period): "day" | "week" | "month" {
+  if (period.kind === "year") return "month";
+  return period.kind === "custom" && daysBetween(period.first, period.last) + 1 > 62 ? "week" : "day";
+}
+
+// The bars of the chart, one per chartUnit; weeks run Monday to Sunday,
+// cut to the period.
 export function chartBuckets(period: Period): DateRange[] {
   const buckets: DateRange[] = [];
-  if (period.kind === "year") {
+  const unit = chartUnit(period);
+  if (unit === "month") {
     for (let month = period.first.slice(0, 7); buckets.length < 12; month = shiftMonth(month, 1)) {
       buckets.push(monthBounds(month));
     }
     return buckets;
   }
-  const days = daysBetween(period.first, period.last) + 1;
-  if (period.kind === "custom" && days > 62) {
+  if (unit === "week") {
     for (let first = period.first; first <= period.last; ) {
       const sunday = weekContaining(first).last;
       const last = sunday < period.last ? sunday : period.last;

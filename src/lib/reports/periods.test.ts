@@ -5,6 +5,7 @@ import {
   averageWindows,
   budgetMonthFor,
   chartBuckets,
+  chartUnit,
   customPeriod,
   dataRange,
   daysBetween,
@@ -116,6 +117,19 @@ describe("chartBuckets (§7.2)", () => {
     const months = chartBuckets(periodFor("year", "2027-05-05"));
     expect(months).toHaveLength(12);
     expect(months[1]).toEqual({ first: "2027-02-01", last: "2027-02-28" });
+  });
+});
+
+describe("chartUnit (§7.2)", () => {
+  it("is the size of each bar, from the period itself", () => {
+    expect(chartUnit(periodFor("week", "2026-10-24"))).toBe("day");
+    expect(chartUnit(periodFor("month", "2026-10-24"))).toBe("day");
+    expect(chartUnit(periodFor("year", "2026-10-24"))).toBe("month");
+    expect(chartUnit({ kind: "custom", first: "2026-09-01", last: "2026-11-01" })).toBe("day");
+    // Starts on a Sunday: the first bar is one day, the rest are weeks. Still "week".
+    const sunday = { kind: "custom" as const, first: "2026-07-05", last: "2026-10-24" };
+    expect(chartBuckets(sunday)[0]).toEqual({ first: "2026-07-05", last: "2026-07-05" });
+    expect(chartUnit(sunday)).toBe("week");
   });
 });
 
