@@ -248,6 +248,26 @@ export type Database = {
         Update: Record<string, never>;
         Relationships: [];
       };
+      settings: {
+        Row: { user_id: string; weekly_email: boolean; updated_at: string };
+        Insert: { weekly_email: boolean };
+        Update: { weekly_email?: boolean };
+        Relationships: [];
+      };
+      report_emails: {
+        Row: {
+          user_id: string;
+          week_start: string;
+          status: "sent" | "failed";
+          sent_at: string | null;
+          error: string;
+          updated_at: string;
+        };
+        // Written by the daily job only (service_role).
+        Insert: { user_id: string; week_start: string; status: "sent" | "failed"; sent_at: string | null; error?: string };
+        Update: { status?: "sent" | "failed"; sent_at?: string | null; error?: string };
+        Relationships: [];
+      };
       fx_rates: {
         Row: {
           rate_date: string;
