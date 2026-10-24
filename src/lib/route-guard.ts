@@ -1,8 +1,9 @@
 // Decides where the proxy sends a visitor before a page loads.
 // Kept free of Next.js and Supabase so it can be tested on its own.
 
-// Pages anyone can open without signing in.
-const PUBLIC_PATHS = ["/sign-in"];
+// Paths anyone can open without signing in. The daily job (Vercel Cron)
+// has no session; its route checks the CRON_SECRET header itself.
+const PUBLIC_PATHS = ["/sign-in", "/api/cron"];
 
 export function isPublicPath(pathname: string) {
   return PUBLIC_PATHS.some(
