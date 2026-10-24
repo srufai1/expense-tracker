@@ -1,4 +1,4 @@
-import { ChevronRight, Landmark, LogOut } from "lucide-react";
+import { ChevronRight, Landmark, LogOut, Tags } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
@@ -33,11 +33,21 @@ export default function MorePage() {
           <span className="flex-1">Accounts</span>
           <ChevronRight className="size-4 text-muted-foreground" aria-hidden="true" />
         </Link>
+        <Link
+          href="/categories"
+          className="flex min-h-13 items-center gap-3 border-t px-4 py-3 font-semibold hover:bg-muted/50 focus-visible:bg-muted focus-visible:outline-none"
+        >
+          <span className="flex size-8 items-center justify-center rounded-lg bg-accent text-accent-foreground">
+            <Tags className="size-4" aria-hidden="true" />
+          </span>
+          <span className="flex-1">Categories</span>
+          <ChevronRight className="size-4 text-muted-foreground" aria-hidden="true" />
+        </Link>
       </nav>
 
       <ComingSoon
-        what="Categories, budgets, recurring items, weekly email and export"
-        step="steps 3–12"
+        what="Budgets, recurring items, weekly email and export"
+        step="steps 7–12"
       />
 
       <Card>
