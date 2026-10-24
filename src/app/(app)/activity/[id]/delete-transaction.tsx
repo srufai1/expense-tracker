@@ -10,17 +10,21 @@ import { Button } from "@/components/ui/button";
 
 // D-26: delete at once, then offer Undo for 10 seconds. What was deleted is
 // kept in the browser until then, and Undo puts it back with the same id.
-// Used for expenses and income, and for transfers with their fee.
+// Used for expenses and income, and for transfers with their fee. When the
+// Undo offer ends without Undo, onGone runs (it removes the receipt photo,
+// D-43), so Undo can still bring the photo back.
 export function DeleteTransaction<Snapshot>({
   thing,
   backHref,
   onDelete,
   onRestore,
+  onGone,
 }: {
   thing: "transaction" | "transfer";
   backHref: string;
   onDelete: () => Promise<{ snapshot: Snapshot } | { error: string }>;
   onRestore: (snapshot: Snapshot) => Promise<string | undefined>;
+  onGone: () => Promise<void>;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -35,7 +39,7 @@ export function DeleteTransaction<Snapshot>({
         return;
       }
       router.push(backHref);
-      showUndo(thing, () => onRestore(result.snapshot), () => router.refresh());
+      showUndo(thing, () => onRestore(result.snapshot), () => router.refresh(), onGone);
     });
   }
 
@@ -64,13 +68,26 @@ export function DeleteTransaction<Snapshot>({
   );
 }
 
-function showUndo(thing: string, restore: () => Promise<string | undefined>, refresh: () => void) {
+function showUndo(
+  thing: string,
+  restore: () => Promise<string | undefined>,
+  refresh: () => void,
+  onGone: () => Promise<void>,
+) {
   const name = thing.charAt(0).toUpperCase() + thing.slice(1);
+  // Clicking Undo also closes the toast; this keeps onGone from running then.
+  let undone = false;
+  const gone = () => {
+    if (!undone) void onGone();
+  };
   toast(`${name} deleted`, {
     duration: 10_000,
+    onAutoClose: gone,
+    onDismiss: gone,
     action: {
       label: "Undo",
       onClick: async () => {
+        undone = true;
         const error = await restore();
         if (error) toast.error(error);
         else toast.success(`${name} put back`);
