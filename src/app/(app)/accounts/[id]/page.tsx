@@ -37,6 +37,7 @@ async function EditAccount({ params }: { params: PageProps<"/accounts/[id]">["pa
         action={updateAccount.bind(null, account.id)}
         submitLabel="Save changes"
         today={todayInAccra()}
+        currencyLocked={account.hasTransactions}
         initial={{
           name: account.name,
           type: account.type,

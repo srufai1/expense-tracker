@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { accountDeleteError, accountTypeLabel, parseAccountForm, totalsByCurrency } from "./accounts";
+import { accountDeleteError, accountSaveError, accountTypeLabel, parseAccountForm, totalsByCurrency } from "./accounts";
 
 const TODAY = "2026-10-23";
 
@@ -116,5 +116,21 @@ describe("accountDeleteError", () => {
 
   it("asks to check the connection otherwise", () => {
     expect(accountDeleteError(undefined)).toBe("Check your internet connection and try again.");
+  });
+});
+
+describe("accountSaveError", () => {
+  it("points at the field the database refused", () => {
+    expect(accountSaveError("23505", "duplicate key value violates unique constraint")).toEqual({
+      name: "You already have an account with this name.",
+    });
+    expect(
+      accountSaveError("23514", "accounts: the currency of an account with transactions cannot change"),
+    ).toEqual({ currency: "This account has transactions, so its currency cannot change." });
+  });
+
+  it("returns null for anything else", () => {
+    expect(accountSaveError("23514", "something else")).toBeNull();
+    expect(accountSaveError(undefined, "fetch failed")).toBeNull();
   });
 });
