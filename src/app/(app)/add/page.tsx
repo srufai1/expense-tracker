@@ -1,4 +1,4 @@
-import { ArrowLeftRight, Receipt } from "lucide-react";
+import { ArrowLeftRight, Receipt, Repeat } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
@@ -85,14 +85,23 @@ async function NewTransaction({ searchParams }: { searchParams: PageProps<"/add"
   const only = choices.accounts.length === 1 ? choices.accounts[0] : null;
   return (
     <>
-      {choices.accounts.length > 1 ? (
-        <Button asChild variant="outline" className="h-11 self-start">
-          <Link href="/add?kind=transfer">
-            <ArrowLeftRight aria-hidden="true" />
-            Move money between accounts
+      <div className="flex flex-wrap gap-2">
+        {choices.accounts.length > 1 ? (
+          <Button asChild variant="outline" className="h-11">
+            <Link href="/add?kind=transfer">
+              <ArrowLeftRight aria-hidden="true" />
+              Move money between accounts
+            </Link>
+          </Button>
+        ) : null}
+        {/* Screen 2 "repeat": a recurring item is set up on its own screen. */}
+        <Button asChild variant="outline" className="h-11">
+          <Link href="/recurring/new">
+            <Repeat aria-hidden="true" />
+            Repeats? Make it recurring
           </Link>
         </Button>
-      ) : null}
+      </div>
       <TransactionForm
         action={createTransaction}
         submitLabel="Save"
