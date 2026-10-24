@@ -112,7 +112,7 @@ async function ThisWeek() {
         </h2>
         <span className="text-xs text-muted-foreground">{periodTitle(period)}</span>
       </div>
-      <dl className="grid grid-cols-3 gap-2">
+      <dl className="flex flex-col gap-1">
         <Figure label="In" minor={report.totals.incomeMinor} />
         <Figure label="Out" minor={report.totals.spendingMinor} />
         <Figure label="Net" minor={report.totals.netMinor} />
@@ -153,10 +153,10 @@ async function ThisWeek() {
 
 function Figure({ label, minor }: { label: string; minor: number }) {
   return (
-    <div className="flex min-w-0 flex-col">
-      <dt className="text-xs font-semibold text-muted-foreground">{label}</dt>
+    <div className="flex items-baseline justify-between gap-2">
+      <dt className="text-sm text-muted-foreground">{label}</dt>
       <dd>
-        <MoneyText minor={minor} currency="GHS" className="text-sm font-bold break-words" />
+        <MoneyText minor={minor} currency="GHS" className="font-bold" />
       </dd>
     </div>
   );

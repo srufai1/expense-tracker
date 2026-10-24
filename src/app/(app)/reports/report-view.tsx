@@ -247,7 +247,10 @@ function Budgets({ report }: { report: Report }) {
   const budgets = report.budgets;
   if (!budgets || budgets.lines.length === 0) return null;
   const month = formatMonth(budgets.month);
-  const title = budgets.asOf ? `Budgets · ${month} to ${formatRateDate(budgets.asOf)}` : `Budgets · ${month}`;
+  // "Budgets · October 2026, to 24 Oct" (month-to-date, §7.3).
+  const title = budgets.asOf
+    ? `Budgets · ${month}, to ${formatRateDate(budgets.asOf).replace(/ \d{4}$/, "")}`
+    : `Budgets · ${month}`;
   return (
     <Section title={title} label="Budgets">
       <ul className="divide-y overflow-hidden rounded-2xl border bg-card">
