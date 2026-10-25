@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 
 import { PageHeader } from "@/components/app-shell/page-header";
+import { InstallAppButton } from "@/components/install-app-button";
 import { Button } from "@/components/ui/button";
 import { appConfig } from "@/config/app";
 import { totalInGhs, totalsByCurrency } from "@/lib/accounts";
@@ -59,9 +60,12 @@ async function BalanceCard() {
         <p className="text-sm opacity-90">
           Add each place your money sits — cash, bank, Mobile Money, card — with its balance today.
         </p>
-        <Button asChild variant="secondary" className="h-11">
-          <Link href="/accounts/new">Add your first account</Link>
-        </Button>
+        <div className="flex flex-wrap gap-3">
+          <Button asChild variant="secondary" className="h-11">
+            <Link href="/accounts/new">Add your first account</Link>
+          </Button>
+          <InstallAppButton />
+        </div>
       </section>
     );
   }
@@ -72,48 +76,53 @@ async function BalanceCard() {
   const total = totalInGhs(accounts, latest?.rate ?? null);
 
   return (
-    <Link
-      href="/accounts"
-      className="relative isolate flex aspect-[1.586] flex-col justify-between gap-3 rounded-2xl p-5 text-white shadow-lg ring-1 ring-white/10 focus-visible:ring-3 focus-visible:ring-ring focus-visible:outline-none"
-    >
-      {/* The card face. Its own layer, so a very large amount can make the
-          card taller instead of being cut off. */}
-      <span
-        className="absolute inset-0 -z-10 overflow-hidden rounded-2xl bg-gradient-to-br from-[#0E7A62] via-[#0B5D4B] to-[#06372C]"
-        aria-hidden="true"
+    // The Install button sits on the card but outside its link (a button
+    // inside a link is not allowed), in the top-right corner (D-46).
+    <div className="relative">
+      <Link
+        href="/accounts"
+        className="relative isolate flex aspect-[1.586] flex-col justify-between gap-3 rounded-2xl p-5 text-white shadow-lg ring-1 ring-white/10 focus-visible:ring-3 focus-visible:ring-ring focus-visible:outline-none"
       >
-        <span className="absolute -top-16 -right-12 size-56 rounded-full bg-white/10" />
-        <span className="absolute -bottom-24 -left-10 size-64 rounded-full bg-white/5" />
-      </span>
-
-      <span className="flex items-center justify-between" aria-hidden="true">
-        {/* The chip */}
-        <span className="relative h-8 w-11 rounded-md bg-gradient-to-br from-[#F6D98B] via-[#E2B54F] to-[#B98A2A] shadow-inner">
-          <span className="absolute inset-x-1.5 top-1/2 h-px bg-[#8A6418]/50" />
-          <span className="absolute inset-y-1.5 left-1/2 w-px bg-[#8A6418]/50" />
+        {/* The card face. Its own layer, so a very large amount can make the
+            card taller instead of being cut off. */}
+        <span
+          className="absolute inset-0 -z-10 overflow-hidden rounded-2xl bg-gradient-to-br from-[#0E7A62] via-[#0B5D4B] to-[#06372C]"
+          aria-hidden="true"
+        >
+          <span className="absolute -top-16 -right-12 size-56 rounded-full bg-white/10" />
+          <span className="absolute -bottom-24 -left-10 size-64 rounded-full bg-white/5" />
         </span>
-        <Nfc className="size-7 opacity-80" />
-      </span>
 
-      <span className="flex flex-col gap-1">
-        <span className="text-xs font-semibold tracking-wide uppercase opacity-80">Total balance</span>
-        <MoneyText minor={total.ghsMinor} currency="GHS" className="text-3xl font-extrabold tracking-tight text-white" />
-        {/* USD is shown separately only when no rate is stored to convert it (D-37). */}
-        {hasUsd && !total.usdConverted ? (
-          <span className="text-xs opacity-90">
-            + <MoneyText minor={totals.USD} currency="USD" className="text-white" />
+        <span className="flex items-center justify-between" aria-hidden="true">
+          {/* The chip */}
+          <span className="relative h-8 w-11 rounded-md bg-gradient-to-br from-[#F6D98B] via-[#E2B54F] to-[#B98A2A] shadow-inner">
+            <span className="absolute inset-x-1.5 top-1/2 h-px bg-[#8A6418]/50" />
+            <span className="absolute inset-y-1.5 left-1/2 w-px bg-[#8A6418]/50" />
           </span>
-        ) : null}
-      </span>
-
-      <span className="flex items-end justify-between gap-3">
-        <span className="text-xs font-semibold tracking-widest uppercase opacity-80">{accounts.length} accounts</span>
-        <span className="flex items-center gap-1 text-sm font-extrabold italic">
-          {appConfig.name}
-          <ChevronRight className="size-4 not-italic opacity-80" aria-hidden="true" />
+          <Nfc className="size-7 opacity-80" />
         </span>
-      </span>
-    </Link>
+
+        <span className="flex flex-col gap-1">
+          <span className="text-xs font-semibold tracking-wide uppercase opacity-80">Total balance</span>
+          <MoneyText minor={total.ghsMinor} currency="GHS" className="text-3xl font-extrabold tracking-tight text-white" />
+          {/* USD is shown separately only when no rate is stored to convert it (D-37). */}
+          {hasUsd && !total.usdConverted ? (
+            <span className="text-xs opacity-90">
+              + <MoneyText minor={totals.USD} currency="USD" className="text-white" />
+            </span>
+          ) : null}
+        </span>
+
+        <span className="flex items-end justify-between gap-3">
+          <span className="text-xs font-semibold tracking-widest uppercase opacity-80">{accounts.length} accounts</span>
+          <span className="flex items-center gap-1 text-sm font-extrabold italic">
+            {appConfig.name}
+            <ChevronRight className="size-4 not-italic opacity-80" aria-hidden="true" />
+          </span>
+        </span>
+      </Link>
+      <InstallAppButton className="absolute top-3.5 right-14" />
+    </div>
   );
 }
 
