@@ -4,12 +4,16 @@ import {
   archivedCategories,
   buildCategoryTree,
   categoryDeleteError,
+  categoryNoun,
   categoryPath,
   categorySaveError,
+  editCategoryTitle,
   kindFromParam,
   nextSortOrder,
   parentChoices,
   parseCategoryForm,
+  subCategoryDeleteError,
+  subCategoryDeleteNote,
   type CategoryRow,
 } from "./categories";
 
@@ -67,6 +71,18 @@ describe("categoryPath", () => {
     expect(categoryPath(ROWS, "groc")).toBe("Food › Groceries");
     expect(categoryPath(ROWS, "food")).toBe("Food");
     expect(categoryPath(ROWS, "missing")).toBe("");
+  });
+});
+
+describe("categoryNoun", () => {
+  it("calls a sub-category a sub-category on its buttons, and a top-level one a category", () => {
+    expect(categoryNoun({ parentId: "food" })).toBe("sub-category");
+    expect(categoryNoun({ parentId: null })).toBe("category");
+  });
+
+  it("gives the edit page's title", () => {
+    expect(editCategoryTitle({ parentId: "food" })).toBe("Edit sub-category");
+    expect(editCategoryTitle({ parentId: null })).toBe("Edit category");
   });
 });
 
@@ -156,6 +172,21 @@ describe("categoryDeleteError", () => {
     expect(categoryDeleteError(undefined, "fetch failed")).toBe(
       "Check your internet connection and try again.",
     );
+  });
+});
+
+describe("deleting a sub-category (D-44)", () => {
+  it("tells the user where its transactions go before they confirm", () => {
+    expect(subCategoryDeleteNote("Food")).toBe(
+      "Its transactions and recurring items move to Food, and its budget is removed. This cannot be undone.",
+    );
+  });
+
+  it("explains why it could not be deleted", () => {
+    expect(subCategoryDeleteError("delete_sub_category: category not found")).toBe(
+      "This sub-category was already deleted. Go back to Categories to see the list.",
+    );
+    expect(subCategoryDeleteError("fetch failed")).toBe("Check your internet connection and try again.");
   });
 });
 

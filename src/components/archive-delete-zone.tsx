@@ -28,6 +28,7 @@ export function ArchiveDeleteZone({
   onDelete,
   archiveHint,
   unarchiveHint,
+  deleteDescription,
 }: {
   thing: string;
   name: string;
@@ -36,6 +37,8 @@ export function ArchiveDeleteZone({
   onDelete?: () => Promise<string | undefined>;
   archiveHint: string;
   unarchiveHint: string;
+  // What the confirm box says, when deleting does more than remove the thing.
+  deleteDescription?: string;
 }) {
   const [pending, startTransition] = useTransition();
   // A new object for every failure, so the pop-up opens each time.
@@ -91,8 +94,8 @@ export function ArchiveDeleteZone({
             <AlertDialogHeader>
               <AlertDialogTitle>Delete “{name}”?</AlertDialogTitle>
               <AlertDialogDescription>
-                This removes the {thing} for good. It cannot be undone. To hide it but keep its history, archive
-                it instead.
+                {deleteDescription ??
+                  `This removes the ${thing} for good. It cannot be undone. To hide it but keep its history, archive it instead.`}
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>

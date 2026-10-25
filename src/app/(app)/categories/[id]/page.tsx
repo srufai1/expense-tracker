@@ -7,9 +7,9 @@ import { Suspense } from "react";
 import { PageHeader } from "@/components/app-shell/page-header";
 import { ArchiveDeleteZone } from "@/components/archive-delete-zone";
 import { Button } from "@/components/ui/button";
-import { parentChoices } from "@/lib/categories";
+import { categoryNoun, editCategoryTitle, parentChoices, subCategoryDeleteNote } from "@/lib/categories";
 
-import { deleteCategory, setCategoryArchived, updateCategory } from "../actions";
+import { deleteCategory, deleteSubCategory, setCategoryArchived, updateCategory } from "../actions";
 import { CategoryForm } from "../category-form";
 import { getCategories } from "../data";
 
@@ -18,9 +18,9 @@ export const metadata: Metadata = { title: "Edit category" };
 export default function EditCategoryPage(props: PageProps<"/categories/[id]">) {
   return (
     <>
-      <PageHeader title="Edit category" backHref="/categories" />
-      {/* The category id comes from the address (request data), so the form
-          renders inside a Suspense boundary (Cache Components rule). */}
+      {/* The category id comes from the address (request data), so the page
+          renders inside a Suspense boundary (Cache Components rule). The
+          title is inside too: it says "sub-category" for a sub-category. */}
       <Suspense fallback={<div className="h-96" aria-hidden="true" />}>
         <EditCategory params={props.params} />
       </Suspense>
@@ -35,6 +35,7 @@ async function EditCategory({ params }: { params: PageProps<"/categories/[id]">[
   if (!category) notFound();
 
   const isSystem = category.systemKey !== null;
+  const parent = category.parentId ? rows.find((row) => row.id === category.parentId) : undefined;
   const hasChildren = rows.some((row) => row.parentId === category.id);
   const parentLockedReason = isSystem
     ? "Fees & Charges always stays a top-level category."
@@ -44,6 +45,7 @@ async function EditCategory({ params }: { params: PageProps<"/categories/[id]">[
 
   return (
     <>
+      <PageHeader title={editCategoryTitle(category)} backHref="/categories" />
       <CategoryForm
         action={updateCategory.bind(null, category.id)}
         submitLabel="Save changes"
@@ -68,13 +70,14 @@ async function EditCategory({ params }: { params: PageProps<"/categories/[id]">[
         </p>
       ) : (
         <ArchiveDeleteZone
-          thing="category"
+          thing={categoryNoun(category)}
           name={category.name}
           archived={category.archived}
           onArchive={setCategoryArchived.bind(null, category.id)}
-          onDelete={deleteCategory.bind(null, category.id)}
-          archiveHint="Hides the category when you add a transaction. Its history stays in reports."
-          unarchiveHint="Shows the category when you add a transaction again."
+          onDelete={parent ? deleteSubCategory.bind(null, category.id) : deleteCategory.bind(null, category.id)}
+          deleteDescription={parent ? subCategoryDeleteNote(parent.name) : undefined}
+          archiveHint={`Hides the ${categoryNoun(category)} when you add a transaction. Its history stays in reports.`}
+          unarchiveHint={`Shows the ${categoryNoun(category)} when you add a transaction again.`}
         />
       )}
     </>

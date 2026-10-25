@@ -9,6 +9,7 @@ import {
   categorySaveError,
   nextSortOrder,
   parseCategoryForm,
+  subCategoryDeleteError,
   type CategoryRow,
 } from "@/lib/categories";
 import { formValues } from "@/lib/form-data";
@@ -109,5 +110,16 @@ export async function deleteCategory(id: string): Promise<string | undefined> {
   const { error } = await supabase.from("categories").delete().eq("id", id);
   if (error) return categoryDeleteError(error.code, error.message);
   revalidatePath("/categories");
+  redirect("/categories");
+}
+
+// D-44: moves its transactions and recurring items to the parent, removes
+// its budgets and deletes it, in one database function.
+export async function deleteSubCategory(id: string): Promise<string | undefined> {
+  await requireUser();
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("delete_sub_category", { p_id: id });
+  if (error) return subCategoryDeleteError(error.message);
+  revalidatePath("/", "layout");
   redirect("/categories");
 }

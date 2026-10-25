@@ -96,6 +96,7 @@ password manager's notes), so you know where to continue.
 | `20261025110000_recurring_goals.sql` | recurring goal contributions (build step 8, D-40) |
 | `20261025130000_settings_emails.sql` | weekly email on/off and the email log (build step 12) |
 | `20261025150000_receipts.sql` | the private `receipts` photo bucket and its access rules (build step 13) |
+| `20261025170000_delete_sub_category.sql` | deleting a used sub-category moves its transactions to the parent (D-44) |
 
 The same files run in the tests (`supabase/tests/`), in PGlite, an in-memory
 Postgres, so the database rules are tested on every push.

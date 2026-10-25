@@ -48,6 +48,17 @@ export function categoryPath(rows: CategoryRow[], id: string): string {
   return parent ? `${parent.name} › ${category.name}` : category.name;
 }
 
+// What the edit page's buttons call it: "Delete sub-category" for a
+// sub-category, "Delete category" for a top-level one.
+export function categoryNoun(category: Pick<CategoryRow, "parentId">): "category" | "sub-category" {
+  return category.parentId === null ? "category" : "sub-category";
+}
+
+// The edit page's title: "Edit sub-category" or "Edit category".
+export function editCategoryTitle(category: Pick<CategoryRow, "parentId">): string {
+  return `Edit ${categoryNoun(category)}`;
+}
+
 // The "Archived" section of the list: archived categories, plus the
 // sub-categories of an archived parent (buildCategoryTree hides those too,
 // so without this they could not be opened again). A to Z by full path.
@@ -133,6 +144,21 @@ export function categoryDeleteError(code: string | undefined, message: string): 
   }
   if (isStillUsed(code)) {
     return "This category is in use (it has sub-categories, transactions, recurring items or budgets). Archive it instead: it is hidden, and its history stays.";
+  }
+  return "Check your internet connection and try again.";
+}
+
+// D-44: a sub-category can be deleted even when used. The confirm box says
+// what happens to what it holds.
+export function subCategoryDeleteNote(parentName: string): string {
+  return `Its transactions and recurring items move to ${parentName}, and its budget is removed. This cannot be undone.`;
+}
+
+// Why delete_sub_category failed. It refuses only a category that is not the
+// user's (or is gone) and a top-level one, which the page never sends.
+export function subCategoryDeleteError(message: string): string {
+  if (message.includes("category not found")) {
+    return "This sub-category was already deleted. Go back to Categories to see the list.";
   }
   return "Check your internet connection and try again.";
 }
