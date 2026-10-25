@@ -71,6 +71,7 @@ not silently edit the old one.
 | D-42 | **The weekly email** is on unless the user turns it off (More → Weekly email). It goes to the sign-in address: with Resend's test sender (D-34) no other address works, so `settings` has no email column yet. The theme stays a setting of the device (built in step 1), not a `settings` column. The daily job sends last week's email on any day until it is logged as sent, so a missed or failed Monday is sent on the next run. The email is plain HTML written in code, not a React Email template (one less library). Chosen during the autonomous build; to be confirmed by the developer. (24 Oct 2026) |
 | D-43 | **Receipt photos** are added on the transaction's own page (Activity → the item → Receipt), after it is saved: the Add form has no photo field. Any transaction may have one, transfers too. Removing a photo asks first. When a transaction is deleted, its photo is removed once the 10-second Undo has passed (so Undo brings the photo back); if the browser is closed within those 10 seconds, the private photo stays in storage. Chosen during the autonomous build; to be confirmed by the developer. (24 Oct 2026) |
 | D-44 | **A sub-category can be deleted even when it has been used.** Its transactions and recurring items move to its parent category, and its own budgets are removed; then it is deleted, all in one step (`delete_sub_category`). Totals for the parent, account balances and the parent's budget stay correct; reports, the PDF and Excel then show that spending under the parent, without the sub-category's detail or budget line. The confirm box says this first. A top-level category still follows D-32. This changes D-32 for sub-categories only. Asked for by the developer in manual testing. (25 Oct 2026) |
+| D-45 | **Invite-only sign-up.** The sign-in page links to "Create an account" (`/sign-up`), which asks for email, password (8–72 characters, typed twice) and an **invite code**, the server-only variable `SIGNUP_INVITE_CODE` (16+ characters; without it, sign-up is closed and the link is hidden). Public sign-up **stays off** in Supabase (rule 5): the Server Action checks the code (constant time), then creates the account with the secret key (`auth.admin.createUser`, email marked confirmed), signs the person in and opens Home. So the secret key is now used in **two** places without a signed-in user: the cron route and this action, and only after the code matched (changes rule 1). Each user sees only their own data (RLS). Until a domain is verified in Resend, the Monday email reaches only the Resend account owner (D-34), so invited users should turn it off. Asked for by the developer. (25 Oct 2026) |
 | D-46 | **"Install app" button** on Home: on the balance card (top right), and on the first-run welcome card. On Android, Chrome and Edge it opens the browser's own install prompt (`beforeinstallprompt`); on iPhone and iPad, which have no prompt, it shows the three "Add to Home Screen" steps. It is hidden once the app is installed (opened from the home screen) and in browsers that cannot install it. No service worker or other change to the app. Asked for by the developer. (25 Oct 2026) |
 
 ## 3. What is in version 1, and what is not
@@ -125,7 +126,8 @@ with another person, offline mode, WhatsApp delivery.
 ### Security rules (same spirit as GPIS)
 
 1. The Supabase **secret key** is used in only one place: the cron route, which
-   runs on the server without a signed-in user. It lives in a server-only module
+   runs on the server without a signed-in user. (Since D-45, also the invite
+   sign-up action, after the invite code matched.) It lives in a server-only module
    (`import "server-only"`) and in a Vercel environment variable — never in
    code, never in the browser.
 2. The cron route checks a `CRON_SECRET` header. Without it, the route returns 401.
@@ -134,7 +136,7 @@ with another person, offline mode, WhatsApp delivery.
    (the same Zod schema), and in the database (CHECK constraints).
 5. **Public sign-up is turned off** after you create your account, so nobody
    else can register. (You do this in the Supabase dashboard; it is a project
-   setting, not code.)
+   setting, not code.) Invited people sign up through the app instead (D-45).
 6. Every schema change is a migration file in `supabase/migrations/`.
 
 ## 5. Money rules

@@ -18,7 +18,8 @@ recorded as a new D-nn decision, never by silently editing an old one.
 - **Balances are calculated, never stored** (M-8). Reports are calculated
   from transactions by the pure functions in `src/lib/reports/` (DESIGN §7).
 - **Security:** the Supabase secret key is used only in server-only code
-  that has no signed-in user (the cron route), never in the browser. Every
+  that has no signed-in user (the cron route, and the invite sign-up action
+  after the code matched, D-45), never in the browser. Every
   table has Row-Level Security on. Every schema change is a migration in
   `supabase/migrations/`. Validate in the form, again in the Server Action,
   and with database constraints.
