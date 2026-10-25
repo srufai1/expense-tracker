@@ -137,19 +137,28 @@ export function categorySaveError(code: string | undefined, message: string): Ca
   return null;
 }
 
-// Why a category could not be deleted (D-32). A sub-category cannot have
-// sub-categories, so its message does not mention them.
-export function categoryDeleteError(
-  code: string | undefined,
-  message: string,
-  noun: "category" | "sub-category" = "category",
-): string {
+// Why a category could not be deleted (D-32).
+export function categoryDeleteError(code: string | undefined, message: string): string {
   if (code === "23514" && message.includes("system category")) {
     return "Fees & Charges is needed for transfer fees, so it cannot be deleted.";
   }
   if (isStillUsed(code)) {
-    const uses = noun === "sub-category" ? "transactions, recurring items or budgets" : "sub-categories, transactions, recurring items or budgets";
-    return `This ${noun} is in use (it has ${uses}). Archive it instead: it is hidden, and its history stays.`;
+    return "This category is in use (it has sub-categories, transactions, recurring items or budgets). Archive it instead: it is hidden, and its history stays.";
+  }
+  return "Check your internet connection and try again.";
+}
+
+// D-44: a sub-category can be deleted even when used. The confirm box says
+// what happens to what it holds.
+export function subCategoryDeleteNote(parentName: string): string {
+  return `Its transactions and recurring items move to ${parentName}, and its budget is removed. This cannot be undone.`;
+}
+
+// Why delete_sub_category failed. It refuses only a category that is not the
+// user's (or is gone) and a top-level one, which the page never sends.
+export function subCategoryDeleteError(message: string): string {
+  if (message.includes("category not found")) {
+    return "This sub-category was already deleted. Go back to Categories to see the list.";
   }
   return "Check your internet connection and try again.";
 }

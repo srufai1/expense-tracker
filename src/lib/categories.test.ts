@@ -12,6 +12,8 @@ import {
   nextSortOrder,
   parentChoices,
   parseCategoryForm,
+  subCategoryDeleteError,
+  subCategoryDeleteNote,
   type CategoryRow,
 } from "./categories";
 
@@ -171,11 +173,20 @@ describe("categoryDeleteError", () => {
       "Check your internet connection and try again.",
     );
   });
+});
 
-  it("says sub-category for a sub-category in use (it cannot have sub-categories of its own)", () => {
-    expect(categoryDeleteError("23503", "violates RESTRICT setting of foreign key constraint", "sub-category")).toBe(
-      "This sub-category is in use (it has transactions, recurring items or budgets). Archive it instead: it is hidden, and its history stays.",
+describe("deleting a sub-category (D-44)", () => {
+  it("tells the user where its transactions go before they confirm", () => {
+    expect(subCategoryDeleteNote("Food")).toBe(
+      "Its transactions and recurring items move to Food, and its budget is removed. This cannot be undone.",
     );
+  });
+
+  it("explains why it could not be deleted", () => {
+    expect(subCategoryDeleteError("delete_sub_category: category not found")).toBe(
+      "This sub-category was already deleted. Go back to Categories to see the list.",
+    );
+    expect(subCategoryDeleteError("fetch failed")).toBe("Check your internet connection and try again.");
   });
 });
 

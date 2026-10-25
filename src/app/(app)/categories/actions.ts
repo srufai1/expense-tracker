@@ -9,6 +9,7 @@ import {
   categorySaveError,
   nextSortOrder,
   parseCategoryForm,
+  subCategoryDeleteError,
   type CategoryRow,
 } from "@/lib/categories";
 import { formValues } from "@/lib/form-data";
@@ -103,12 +104,22 @@ export async function setCategoryArchived(id: string, archived: boolean): Promis
 }
 
 // Deletes an unused category. A used one is refused by the database (D-32).
-// `noun` only picks the wording of the error message ("sub-category").
-export async function deleteCategory(id: string, noun: "category" | "sub-category"): Promise<string | undefined> {
+export async function deleteCategory(id: string): Promise<string | undefined> {
   await requireUser();
   const supabase = await createClient();
   const { error } = await supabase.from("categories").delete().eq("id", id);
-  if (error) return categoryDeleteError(error.code, error.message, noun === "sub-category" ? noun : "category");
+  if (error) return categoryDeleteError(error.code, error.message);
   revalidatePath("/categories");
+  redirect("/categories");
+}
+
+// D-44: moves its transactions and recurring items to the parent, removes
+// its budgets and deletes it, in one database function.
+export async function deleteSubCategory(id: string): Promise<string | undefined> {
+  await requireUser();
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("delete_sub_category", { p_id: id });
+  if (error) return subCategoryDeleteError(error.message);
+  revalidatePath("/", "layout");
   redirect("/categories");
 }

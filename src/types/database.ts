@@ -328,6 +328,9 @@ export type Database = {
       // Deletes a transfer with its fee; returns save_transfer's arguments
       // for Undo, or null when it is not the user's transfer.
       delete_transfer: { Args: { p_id: string }; Returns: unknown };
+      // Deletes a sub-category; its transactions and recurring items move to
+      // the parent and its budgets are removed (D-44).
+      delete_sub_category: { Args: { p_id: string }; Returns: undefined };
     };
     Enums: { [_ in never]: never };
     CompositeTypes: { [_ in never]: never };
