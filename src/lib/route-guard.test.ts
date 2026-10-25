@@ -50,6 +50,14 @@ describe("getRedirect when signed out", () => {
     );
   });
 
+  it("lets the forgot-password page and the email link's return address load (D-48)", () => {
+    expect(isPublicPath("/forgot-password")).toBe(true);
+    expect(isPublicPath("/auth/callback")).toBe(true);
+    expect(getRedirect({ pathname: "/auth/callback", search: "?code=x", signedIn })).toBeNull();
+    // Choosing the new password needs the session the email link gives.
+    expect(isPublicPath("/reset-password")).toBe(false);
+  });
+
   it("lets the invite sign-up page load (D-45)", () => {
     expect(isPublicPath("/sign-up")).toBe(true);
     expect(getRedirect({ pathname: "/sign-up", search: "", signedIn })).toBeNull();
