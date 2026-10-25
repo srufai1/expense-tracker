@@ -89,6 +89,70 @@ describe("delete_my_account (D-51)", () => {
     expect(users.rows.map((r) => r.id)).toEqual([BOB]);
   });
 
+  it("deletes a full, real-looking account: starter categories (with the system Fees & Charges), sub-categories, budgets, a goal, recurring items and a transfer with a fee", async () => {
+    const CAROL = "00000000-0000-4000-8000-00000000000c";
+    await createUser(db, CAROL);
+    const one = async (sql: string, params: unknown[] = []) => (await rows<{ id: string }>(CAROL, sql, params))[0]?.id;
+    await rows(CAROL, "select public.seed_starter_categories()");
+    const cash = await one(
+      "insert into public.accounts (name, type, currency, opening_balance_on) values ('Cash', 'cash', 'GHS', '2026-10-01') returning id",
+    );
+    const momo = await one(
+      "insert into public.accounts (name, type, currency, opening_balance_on) values ('MoMo', 'mobile_money', 'GHS', '2026-10-01') returning id",
+    );
+    const food = await one("select id from public.categories where name = 'Food' and parent_id is null");
+    const groceries = await one("select id from public.categories where name = 'Groceries'");
+    await rows(
+      CAROL,
+      `insert into public.transactions (kind, occurred_on, account_id, category_id, amount_minor, currency, fx_rate,
+         fx_source, amount_ghs_minor, account_amount_minor)
+       values ('expense', '2026-10-20', $1, $2, 2500, 'GHS', 1, 'none', 2500, 2500)`,
+      [cash, groceries],
+    );
+    // A transfer with a fee: the fee is a Fees & Charges expense that points to its transfer.
+    await rows(
+      CAROL,
+      "select public.save_transfer(null, '2026-10-21', $1, $2, 10000, 10000, 'GHS', 1, 'none', null, 10000, 150, 150, '')",
+      [cash, momo],
+    );
+    await rows(CAROL, "insert into public.budgets (category_id, effective_from, amount_minor) values ($1, '2026-10-01', 150000)", [food]);
+    await rows(CAROL, "insert into public.budgets (category_id, effective_from, amount_minor) values ($1, '2026-10-01', 50000)", [groceries]);
+    const goal = await one(
+      "insert into public.goals (name, target_minor, target_date) values ('Laptop', 800000, '2027-03-31') returning id",
+    );
+    await rows(CAROL, "insert into public.goal_contributions (goal_id, occurred_on, amount_minor) values ($1, '2026-10-15', 20000)", [goal]);
+    await rows(
+      CAROL,
+      `insert into public.recurring_rules (kind, account_id, category_id, amount_minor, currency, frequency, day_of_month,
+         starts_on, next_run_on)
+       values ('expense', $1, $2, 5000, 'GHS', 'monthly', 25, '2026-10-25', '2026-10-25')`,
+      [cash, groceries],
+    );
+    await rows(
+      CAROL,
+      `insert into public.recurring_rules (kind, goal_id, amount_minor, currency, frequency, weekday, starts_on, next_run_on)
+       values ('goal_contribution', $1, 26100, 'GHS', 'weekly', 1, '2026-10-26', '2026-10-26')`,
+      [goal],
+    );
+    await rows(CAROL, "insert into public.settings (weekly_email) values (true)");
+
+    await rows(CAROL, "select public.delete_my_account()");
+
+    const tables = ["accounts", "categories", "transactions", "budgets", "goals", "goal_contributions", "recurring_rules", "settings"];
+    for (const table of tables) {
+      const { rows: left } = await db.query<{ n: number }>(`select count(*)::int as n from public.${table} where user_id = $1`, [CAROL]);
+      expect(`${table}: ${left[0].n}`).toBe(`${table}: 0`);
+    }
+    expect((await db.query("select id from auth.users where id = $1", [CAROL])).rows).toEqual([]);
+  });
+
+  it("still never lets a user delete Fees & Charges on its own", async () => {
+    const DAN = "00000000-0000-4000-8000-00000000000d";
+    await createUser(db, DAN);
+    await rows(DAN, "select public.seed_starter_categories()");
+    await expect(rows(DAN, "delete from public.categories where system_key = 'fees'")).rejects.toThrow(/system category/);
+  });
+
   it("refuses a signed-out visitor", async () => {
     await expect(asAnon(db, () => db.query("select public.delete_my_account()"))).rejects.toThrow(/permission denied/);
   });
