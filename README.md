@@ -114,6 +114,8 @@ change is always a new file.
 | `20261025150000_receipts.sql` | the private `receipts` photo bucket and its access rules (build step 13) |
 | `20261025170000_delete_sub_category.sql` | deleting a used sub-category moves its transactions to the parent (D-44) |
 | `20261025190000_auth_attempts.sql` | 5 failed attempts lock for 20 minutes (D-49) |
+| `20261025210000_avatars.sql` | the private `avatars` bucket for profile photos (D-50) |
+| `20261025211000_delete_my_account.sql` | "Delete my account" removes the login and all its data (D-51) |
 
 The same files run in the tests (`supabase/tests/`), in PGlite, an in-memory
 Postgres, so the database rules are tested on every push.
@@ -171,8 +173,9 @@ Checked on 25 Oct 2026, before the first deploy:
   answers 401 without `CRON_SECRET` (compared in constant time).
 - 5 failed sign-ins, invite codes or current passwords lock for 20 minutes,
   and 20 minutes without activity signs out (D-49).
-- Receipt photos are in a private bucket, shown through links that expire
-  after 5 minutes.
+- Receipt photos and profile photos are in private buckets, shown through
+  links that expire (5 minutes and 1 hour). "Delete my account" removes the
+  photos, the login and every row of data (D-51).
 - Every response carries security headers (`src/lib/security-headers.ts`):
   no framing by other sites, no type guessing, HTTPS only.
 - `npm audit`: 2 moderate warnings, both the old `uuid` package inside

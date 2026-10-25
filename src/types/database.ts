@@ -331,6 +331,8 @@ export type Database = {
       // Deletes a sub-category; its transactions and recurring items move to
       // the parent and its budgets are removed (D-44).
       delete_sub_category: { Args: { p_id: string }; Returns: undefined };
+      // Deletes the signed-in user and, by cascade, all their rows (D-51).
+      delete_my_account: { Args: Record<string, never>; Returns: undefined };
       // Failed-attempt lockout (D-49). Both return when the lock ends, or null.
       auth_attempt_lock: { Args: { p_kind: AttemptKind; p_subject: string | null }; Returns: string | null };
       auth_attempt_failed: { Args: { p_kind: AttemptKind; p_subject: string | null }; Returns: string | null };
