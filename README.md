@@ -56,10 +56,13 @@ You need Node.js 22 or newer and a Supabase project.
 
    `.env.local` is ignored by Git. Never commit it.
 
-3. Create your user: Supabase → **Authentication → Users → Add user**
-   (email + password, tick "Auto confirm"). Then turn off public sign-ups:
-   **Authentication → Sign In / Providers → "Allow new users to sign up"**
-   off, so nobody else can register (DESIGN §4, rule 5).
+3. Turn off public sign-ups: **Authentication → Sign In / Providers →
+   "Allow new users to sign up"** off, so nobody can register directly with
+   Supabase (DESIGN §4, rule 5). Then create your user, either way:
+   - in the app: set `SIGNUP_INVITE_CODE` (and `SUPABASE_SECRET_KEY`) in
+     `.env.local`, then use **Create an account** on the sign-in page (D-45);
+   - or in Supabase → **Authentication → Users → Add user** (email +
+     password, tick "Auto confirm").
 
 4. Start the app and open http://localhost:3000:
 
@@ -126,9 +129,10 @@ Postgres, so the database rules are tested on every push.
    |---|---|---|
    | `NEXT_PUBLIC_SUPABASE_URL` | Supabase → Project Settings → API | the whole app |
    | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Supabase → Project Settings → API keys | the whole app |
-   | `SUPABASE_SECRET_KEY` | Supabase → Project Settings → API keys → Secret key | the daily job only |
+   | `SUPABASE_SECRET_KEY` | Supabase → Project Settings → API keys → Secret key | the daily job and invite sign-up |
    | `CRON_SECRET` | make one: `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` | the daily job only |
    | `RESEND_API_KEY` | Resend → API Keys (Sending access) | the Monday email only |
+   | `SIGNUP_INVITE_CODE` | make one like `CRON_SECRET`; give it to the people you invite | invite sign-up (D-45); empty = closed |
 
    After adding them, redeploy (Deployments → ⋯ → Redeploy).
 4. **Supabase Auth URL:** Authentication → URL Configuration → Site URL =
@@ -154,7 +158,7 @@ Postgres, so the database rules are tested on every push.
 Checked on 25 Oct 2026, before the first deploy:
 
 - The secret key is read in one server-only file (`src/lib/supabase/admin.ts`),
-  used by the daily job only. `npm run check`, every `git push` and CI fail
+  used by the daily job and by invite sign-up after the code matched (D-45). `npm run check`, every `git push` and CI fail
   if `sb_secret_` or `service_role` appears anywhere in `src/`
   (`scripts/check-secrets.mjs`).
 - Every table has Row-Level Security on, with policies for the owner only.
