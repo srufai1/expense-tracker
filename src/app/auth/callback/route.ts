@@ -1,6 +1,8 @@
+import { cookies } from "next/headers";
 import { connection, type NextRequest } from "next/server";
 import { redirect } from "next/navigation";
 
+import { IDLE_COOKIE, idleCookieOptions } from "@/lib/idle";
 import { safeRedirectPath } from "@/lib/safe-redirect";
 import { createClient } from "@/lib/supabase/server";
 
@@ -16,7 +18,11 @@ export async function GET(request: NextRequest) {
   if (code) {
     const supabase = await createClient();
     const { error } = await supabase.auth.exchangeCodeForSession(code);
-    if (!error) redirect(next);
+    if (!error) {
+      // Starts the 20-minute idle clock (D-49).
+      (await cookies()).set(IDLE_COOKIE, String(Date.now()), idleCookieOptions);
+      redirect(next);
+    }
   }
   redirect("/forgot-password?link=expired");
 }

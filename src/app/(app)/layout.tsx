@@ -1,4 +1,5 @@
 import { BottomNav } from "@/components/app-shell/bottom-nav";
+import { IdleSignOut } from "@/components/app-shell/idle-sign-out";
 
 // Shell for every signed-in page: page content plus the bottom menu.
 // This layout must not read the session at its top level (Cache
@@ -10,6 +11,8 @@ export default function AppLayout({ children }: LayoutProps<"/">) {
         {children}
       </main>
       <BottomNav />
+      {/* Signs out after 20 minutes without activity (D-49). */}
+      <IdleSignOut />
     </>
   );
 }

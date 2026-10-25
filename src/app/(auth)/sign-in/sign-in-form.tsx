@@ -16,6 +16,7 @@ const initialState: SignInState = {};
 export function SignInForm() {
   const searchParams = useSearchParams();
   const next = searchParams.get("next") ?? "";
+  const idle = searchParams.get("reason") === "idle";
   const [state, formAction, pending] = useActionState(signIn, initialState);
 
   return (
@@ -27,6 +28,11 @@ export function SignInForm() {
         focusSelector={state.field ? `#${state.field}` : null}
       />
       <input type="hidden" name="next" value={next} />
+      {idle ? (
+        <p role="status" className="rounded-xl bg-accent p-3 text-sm text-accent-foreground">
+          You were signed out after 20 minutes without activity, to keep your money private. Sign in again to go on.
+        </p>
+      ) : null}
 
       <div className="flex flex-col gap-2">
         <Label htmlFor="email">Email</Label>
