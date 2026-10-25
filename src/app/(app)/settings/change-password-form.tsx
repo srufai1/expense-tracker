@@ -6,7 +6,7 @@ import { useActionState } from "react";
 import { FormErrorDialog } from "@/components/form-error-dialog";
 import { NewPasswordFields } from "@/components/new-password-fields";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/password-input";
 import { Label } from "@/components/ui/label";
 
 import { changePassword, type ChangePasswordState } from "./password-actions";
@@ -33,10 +33,9 @@ export function ChangePasswordForm() {
       ) : null}
       <div className="flex flex-col gap-2">
         <Label htmlFor="current">Current password</Label>
-        <Input
+        <PasswordInput
           id="current"
           name="current"
-          type="password"
           autoComplete="current-password"
           required
           maxLength={128}
