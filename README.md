@@ -116,6 +116,7 @@ change is always a new file.
 | `20261025190000_auth_attempts.sql` | 5 failed attempts lock for 20 minutes (D-49) |
 | `20261025210000_avatars.sql` | the private `avatars` bucket for profile photos (D-50) |
 | `20261025211000_delete_my_account.sql` | "Delete my account" removes the login and all its data (D-51) |
+| `20261026090000_delete_account_system_category.sql` | fix: deleting an account also removes Fees & Charges (D-52) |
 
 The same files run in the tests (`supabase/tests/`), in PGlite, an in-memory
 Postgres, so the database rules are tested on every push.

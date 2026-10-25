@@ -37,7 +37,11 @@ export async function deleteMyAccount(_previous: DeleteAccountState, formData: F
   if (avatar.error) return { error: NO_CONNECTION };
 
   const { error } = await supabase.rpc("delete_my_account");
-  if (error) return { error: "Your photos were removed, but the account could not be deleted. Try again." };
+  if (error) {
+    // Kept in the server log (Vercel → Logs), so the cause can be found.
+    console.error("delete_my_account failed:", error.code, error.message);
+    return { error: "Your photos were removed, but the account could not be deleted. Try again." };
+  }
 
   // The login no longer exists; clear this device's session cookies.
   const cookieStore = await cookies();
