@@ -7,6 +7,7 @@ import {
   categoryNoun,
   categoryPath,
   categorySaveError,
+  editCategoryTitle,
   kindFromParam,
   nextSortOrder,
   parentChoices,
@@ -75,6 +76,11 @@ describe("categoryNoun", () => {
   it("calls a sub-category a sub-category on its buttons, and a top-level one a category", () => {
     expect(categoryNoun({ parentId: "food" })).toBe("sub-category");
     expect(categoryNoun({ parentId: null })).toBe("category");
+  });
+
+  it("gives the edit page's title", () => {
+    expect(editCategoryTitle({ parentId: "food" })).toBe("Edit sub-category");
+    expect(editCategoryTitle({ parentId: null })).toBe("Edit category");
   });
 });
 
@@ -163,6 +169,12 @@ describe("categoryDeleteError", () => {
     );
     expect(categoryDeleteError(undefined, "fetch failed")).toBe(
       "Check your internet connection and try again.",
+    );
+  });
+
+  it("says sub-category for a sub-category in use (it cannot have sub-categories of its own)", () => {
+    expect(categoryDeleteError("23503", "violates RESTRICT setting of foreign key constraint", "sub-category")).toBe(
+      "This sub-category is in use (it has transactions, recurring items or budgets). Archive it instead: it is hidden, and its history stays.",
     );
   });
 });

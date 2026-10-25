@@ -103,11 +103,12 @@ export async function setCategoryArchived(id: string, archived: boolean): Promis
 }
 
 // Deletes an unused category. A used one is refused by the database (D-32).
-export async function deleteCategory(id: string): Promise<string | undefined> {
+// `noun` only picks the wording of the error message ("sub-category").
+export async function deleteCategory(id: string, noun: "category" | "sub-category"): Promise<string | undefined> {
   await requireUser();
   const supabase = await createClient();
   const { error } = await supabase.from("categories").delete().eq("id", id);
-  if (error) return categoryDeleteError(error.code, error.message);
+  if (error) return categoryDeleteError(error.code, error.message, noun === "sub-category" ? noun : "category");
   revalidatePath("/categories");
   redirect("/categories");
 }

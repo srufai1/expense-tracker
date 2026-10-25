@@ -54,6 +54,11 @@ export function categoryNoun(category: Pick<CategoryRow, "parentId">): "category
   return category.parentId === null ? "category" : "sub-category";
 }
 
+// The edit page's title: "Edit sub-category" or "Edit category".
+export function editCategoryTitle(category: Pick<CategoryRow, "parentId">): string {
+  return `Edit ${categoryNoun(category)}`;
+}
+
 // The "Archived" section of the list: archived categories, plus the
 // sub-categories of an archived parent (buildCategoryTree hides those too,
 // so without this they could not be opened again). A to Z by full path.
@@ -132,13 +137,19 @@ export function categorySaveError(code: string | undefined, message: string): Ca
   return null;
 }
 
-// Why a category could not be deleted (D-32).
-export function categoryDeleteError(code: string | undefined, message: string): string {
+// Why a category could not be deleted (D-32). A sub-category cannot have
+// sub-categories, so its message does not mention them.
+export function categoryDeleteError(
+  code: string | undefined,
+  message: string,
+  noun: "category" | "sub-category" = "category",
+): string {
   if (code === "23514" && message.includes("system category")) {
     return "Fees & Charges is needed for transfer fees, so it cannot be deleted.";
   }
   if (isStillUsed(code)) {
-    return "This category is in use (it has sub-categories, transactions, recurring items or budgets). Archive it instead: it is hidden, and its history stays.";
+    const uses = noun === "sub-category" ? "transactions, recurring items or budgets" : "sub-categories, transactions, recurring items or budgets";
+    return `This ${noun} is in use (it has ${uses}). Archive it instead: it is hidden, and its history stays.`;
   }
   return "Check your internet connection and try again.";
 }

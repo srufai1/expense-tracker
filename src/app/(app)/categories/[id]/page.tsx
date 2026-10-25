@@ -7,7 +7,7 @@ import { Suspense } from "react";
 import { PageHeader } from "@/components/app-shell/page-header";
 import { ArchiveDeleteZone } from "@/components/archive-delete-zone";
 import { Button } from "@/components/ui/button";
-import { categoryNoun, parentChoices } from "@/lib/categories";
+import { categoryNoun, editCategoryTitle, parentChoices } from "@/lib/categories";
 
 import { deleteCategory, setCategoryArchived, updateCategory } from "../actions";
 import { CategoryForm } from "../category-form";
@@ -18,9 +18,9 @@ export const metadata: Metadata = { title: "Edit category" };
 export default function EditCategoryPage(props: PageProps<"/categories/[id]">) {
   return (
     <>
-      <PageHeader title="Edit category" backHref="/categories" />
-      {/* The category id comes from the address (request data), so the form
-          renders inside a Suspense boundary (Cache Components rule). */}
+      {/* The category id comes from the address (request data), so the page
+          renders inside a Suspense boundary (Cache Components rule). The
+          title is inside too: it says "sub-category" for a sub-category. */}
       <Suspense fallback={<div className="h-96" aria-hidden="true" />}>
         <EditCategory params={props.params} />
       </Suspense>
@@ -44,6 +44,7 @@ async function EditCategory({ params }: { params: PageProps<"/categories/[id]">[
 
   return (
     <>
+      <PageHeader title={editCategoryTitle(category)} backHref="/categories" />
       <CategoryForm
         action={updateCategory.bind(null, category.id)}
         submitLabel="Save changes"
@@ -72,7 +73,7 @@ async function EditCategory({ params }: { params: PageProps<"/categories/[id]">[
           name={category.name}
           archived={category.archived}
           onArchive={setCategoryArchived.bind(null, category.id)}
-          onDelete={deleteCategory.bind(null, category.id)}
+          onDelete={deleteCategory.bind(null, category.id, categoryNoun(category))}
           archiveHint={`Hides the ${categoryNoun(category)} when you add a transaction. Its history stays in reports.`}
           unarchiveHint={`Shows the ${categoryNoun(category)} when you add a transaction again.`}
         />
