@@ -13,7 +13,9 @@ create schema auth;
 grant usage on schema auth to anon, authenticated;
 
 create table auth.users (
-  id uuid primary key
+  id uuid primary key,
+  -- Real Supabase has this column too; the sign-in lockout reads it (D-49).
+  email text
 );
 
 -- Like Supabase's auth.uid(): the signed-in user's id from the request's

@@ -113,6 +113,7 @@ change is always a new file.
 | `20261025130000_settings_emails.sql` | weekly email on/off and the email log (build step 12) |
 | `20261025150000_receipts.sql` | the private `receipts` photo bucket and its access rules (build step 13) |
 | `20261025170000_delete_sub_category.sql` | deleting a used sub-category moves its transactions to the parent (D-44) |
+| `20261025190000_auth_attempts.sql` | 5 failed attempts lock for 20 minutes (D-49) |
 
 The same files run in the tests (`supabase/tests/`), in PGlite, an in-memory
 Postgres, so the database rules are tested on every push.
@@ -168,6 +169,8 @@ Checked on 25 Oct 2026, before the first deploy:
   The two `security definer` functions check `auth.uid()` themselves.
 - Signed-out visitors are sent to sign-in, downloads included. The daily job
   answers 401 without `CRON_SECRET` (compared in constant time).
+- 5 failed sign-ins, invite codes or current passwords lock for 20 minutes,
+  and 20 minutes without activity signs out (D-49).
 - Receipt photos are in a private bucket, shown through links that expire
   after 5 minutes.
 - Every response carries security headers (`src/lib/security-headers.ts`):

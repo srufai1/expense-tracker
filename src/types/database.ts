@@ -331,8 +331,16 @@ export type Database = {
       // Deletes a sub-category; its transactions and recurring items move to
       // the parent and its budgets are removed (D-44).
       delete_sub_category: { Args: { p_id: string }; Returns: undefined };
+      // Failed-attempt lockout (D-49). Both return when the lock ends, or null.
+      auth_attempt_lock: { Args: { p_kind: AttemptKind; p_subject: string | null }; Returns: string | null };
+      auth_attempt_failed: { Args: { p_kind: AttemptKind; p_subject: string | null }; Returns: string | null };
+      auth_attempt_cleared: { Args: { p_kind: "sign-in" | "password" }; Returns: undefined };
     };
     Enums: { [_ in never]: never };
     CompositeTypes: { [_ in never]: never };
   };
 };
+
+// What the lockout counts (D-49): sign-in per email, the invite code per
+// network address, the current password per user.
+export type AttemptKind = "sign-in" | "invite" | "password";
