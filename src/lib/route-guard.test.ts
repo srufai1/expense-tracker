@@ -50,6 +50,11 @@ describe("getRedirect when signed out", () => {
     );
   });
 
+  it("lets the invite sign-up page load (D-45)", () => {
+    expect(isPublicPath("/sign-up")).toBe(true);
+    expect(getRedirect({ pathname: "/sign-up", search: "", signedIn })).toBeNull();
+  });
+
   it("lets the sign-in page load", () => {
     expect(getRedirect({ pathname: "/sign-in", search: "?next=%2Freports", signedIn })).toBeNull();
   });
@@ -61,6 +66,10 @@ describe("getRedirect when signed in", () => {
   it("lets app pages load", () => {
     expect(getRedirect({ pathname: "/", search: "", signedIn })).toBeNull();
     expect(getRedirect({ pathname: "/reports", search: "", signedIn })).toBeNull();
+  });
+
+  it("sends the sign-up page to Home", () => {
+    expect(getRedirect({ pathname: "/sign-up", search: "", signedIn })).toBe("/");
   });
 
   it("sends the sign-in page to Home", () => {
