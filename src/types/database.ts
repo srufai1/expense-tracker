@@ -240,7 +240,7 @@ export type Database = {
           occurred_on: string;
           amount_minor: number;
           note?: string;
-          // The daily job only (service_role): it has no signed-in user.
+          // The daily job only (secret-key client): it has no signed-in user.
           user_id?: string;
           recurring_rule_id?: string;
           occurrence_date?: string;
@@ -263,7 +263,7 @@ export type Database = {
           error: string;
           updated_at: string;
         };
-        // Written by the daily job only (service_role).
+        // Written by the daily job only (secret-key client).
         Insert: {
           user_id: string;
           week_start: string;

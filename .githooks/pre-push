@@ -1,7 +1,8 @@
 #!/bin/sh
 # Runs before every `git push` (see scripts/install-hooks.mjs).
-# GitHub CI is not available, so this is the safety net: if lint, the type
-# check or a test fails, the push is cancelled and nothing reaches GitHub.
+# GitHub CI is not available, so this is the safety net: if the secret-key
+# search, lint, the type check or a test fails, the push is cancelled and
+# nothing reaches GitHub.
 # Emergency only: `git push --no-verify` skips it.
-echo "pre-push: running lint, type check and tests..."
-npm run lint && npm run typecheck && npm run test:coverage
+echo "pre-push: running the secret-key search, lint, type check and tests..."
+npm run check:secrets && npm run lint && npm run typecheck && npm run test:coverage

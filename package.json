@@ -11,7 +11,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "check": "npm run lint && npm run typecheck && npm run test:coverage && npm run build",
+    "check:secrets": "node scripts/check-secrets.mjs",
+    "check": "npm run check:secrets && npm run lint && npm run typecheck && npm run test:coverage && npm run build",
     "prepare": "node scripts/install-hooks.mjs"
   },
   "dependencies": {

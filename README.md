@@ -72,16 +72,29 @@ You need Node.js 22 or newer and a Supabase project.
 Every change to the database is a file in `supabase/migrations/`, named
 `<date and time>_<what>.sql`. They are applied **in name order, once each**.
 
-To apply a new migration to your Supabase project:
+They are applied with the Supabase CLI, which remembers which files have
+run and runs only the new ones.
 
-1. Supabase dashboard → your project → **SQL Editor** → **New query**.
-2. Open the migration file in VS Code, copy all of it, paste it into the editor.
-3. Click **Run**. It should say "Success. No rows returned".
-4. Never run the same file twice, and never edit a file that has already run:
-   a change is always a new file.
+Once per computer (in the project folder):
 
-Applied so far: keep a note of the last file you ran (for example in your
-password manager's notes), so you know where to continue.
+```bash
+npx supabase login
+npx supabase link --project-ref <your project ref>
+```
+
+The project ref is in the dashboard address: `supabase.com/dashboard/project/<ref>`.
+`link` asks for the database password; type it there only.
+
+After each `git pull` that brings a new migration:
+
+```bash
+npx supabase db push --linked --dry-run   # shows what would run; changes nothing
+npx supabase db push --linked             # runs it
+```
+
+Never run a migration file by hand in the SQL Editor as well: the CLI would
+not know, and would run it again. Never edit a file that has already run: a
+change is always a new file.
 
 | File | What it adds |
 |---|---|
@@ -103,8 +116,8 @@ Postgres, so the database rules are tested on every push.
 
 ## Put it online (Vercel)
 
-1. **Supabase:** run every migration in the table above, in order (SQL
-   Editor). The receipts migration also creates the private photo bucket.
+1. **Supabase:** run every migration (`npx supabase db push --linked`, see
+   above). The receipts migration also creates the private photo bucket.
 2. **Vercel:** New Project → import this GitHub repository → Deploy.
 3. **Environment variables** (Vercel → Project → Settings → Environment
    Variables). Names only are in `.env.example`; never commit the values.
@@ -136,10 +149,39 @@ Postgres, so the database rules are tested on every push.
 7. **Backup:** the free Supabase plan has no automatic backups. Download
    More → **Export everything (Excel)** once a month.
 
+## Security
+
+Checked on 25 Oct 2026, before the first deploy:
+
+- The secret key is read in one server-only file (`src/lib/supabase/admin.ts`),
+  used by the daily job only. `npm run check`, every `git push` and CI fail
+  if `sb_secret_` or `service_role` appears anywhere in `src/`
+  (`scripts/check-secrets.mjs`).
+- Every table has Row-Level Security on, with policies for the owner only.
+  The two `security definer` functions check `auth.uid()` themselves.
+- Signed-out visitors are sent to sign-in, downloads included. The daily job
+  answers 401 without `CRON_SECRET` (compared in constant time).
+- Receipt photos are in a private bucket, shown through links that expire
+  after 5 minutes.
+- Every response carries security headers (`src/lib/security-headers.ts`):
+  no framing by other sites, no type guessing, HTTPS only.
+- `npm audit`: 2 moderate warnings, both the old `uuid` package inside
+  `exceljs`. The bug needs `uuid` v3/v5/v6 with a caller-supplied buffer;
+  exceljs does not use it that way, so it does not affect this app. The
+  suggested `npm audit fix --force` would downgrade exceljs, so do not run it.
+
+In the Supabase dashboard, check once:
+
+1. **Authentication → Sign In / Providers:** "Allow new users to sign up" is
+   **off** (only your own user exists).
+2. **Advisors → Security Advisor:** no errors.
+3. **Authentication → URL Configuration:** Site URL is the Vercel address.
+
 ## Checks
 
 ```bash
 npm run check          # all of the below, in order — run before merging
+npm run check:secrets  # no Supabase secret key written anywhere under src/
 npm run lint           # code style and common mistakes
 npm run typecheck      # TypeScript types (generates Next.js route types first)
 npm run test           # unit tests (Vitest)
@@ -147,8 +189,8 @@ npm run test:coverage  # unit tests + fails if src/lib is under 90% covered
 npm run build          # production build
 ```
 
-**Automatic check before every push.** After `npm ci`, Git runs lint, the
-type check and the tests before each `git push` (`.githooks/pre-push`). If
+**Automatic check before every push.** After `npm ci`, Git runs the
+secret-key search, lint, the type check and the tests before each `git push` (`.githooks/pre-push`). If
 anything fails, the push is cancelled: fix the problem and push again.
 
 GitHub CI (`.github/workflows/ci.yml`) runs the same checks, but GitHub
