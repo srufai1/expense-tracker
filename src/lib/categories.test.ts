@@ -4,6 +4,7 @@ import {
   archivedCategories,
   buildCategoryTree,
   categoryDeleteError,
+  categoryNoun,
   categoryPath,
   categorySaveError,
   kindFromParam,
@@ -67,6 +68,13 @@ describe("categoryPath", () => {
     expect(categoryPath(ROWS, "groc")).toBe("Food › Groceries");
     expect(categoryPath(ROWS, "food")).toBe("Food");
     expect(categoryPath(ROWS, "missing")).toBe("");
+  });
+});
+
+describe("categoryNoun", () => {
+  it("calls a sub-category a sub-category on its buttons, and a top-level one a category", () => {
+    expect(categoryNoun({ parentId: "food" })).toBe("sub-category");
+    expect(categoryNoun({ parentId: null })).toBe("category");
   });
 });
 

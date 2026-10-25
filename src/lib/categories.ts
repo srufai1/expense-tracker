@@ -48,6 +48,12 @@ export function categoryPath(rows: CategoryRow[], id: string): string {
   return parent ? `${parent.name} › ${category.name}` : category.name;
 }
 
+// What the edit page's buttons call it: "Delete sub-category" for a
+// sub-category, "Delete category" for a top-level one.
+export function categoryNoun(category: Pick<CategoryRow, "parentId">): "category" | "sub-category" {
+  return category.parentId === null ? "category" : "sub-category";
+}
+
 // The "Archived" section of the list: archived categories, plus the
 // sub-categories of an archived parent (buildCategoryTree hides those too,
 // so without this they could not be opened again). A to Z by full path.

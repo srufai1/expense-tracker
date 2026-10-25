@@ -7,7 +7,7 @@ import { Suspense } from "react";
 import { PageHeader } from "@/components/app-shell/page-header";
 import { ArchiveDeleteZone } from "@/components/archive-delete-zone";
 import { Button } from "@/components/ui/button";
-import { parentChoices } from "@/lib/categories";
+import { categoryNoun, parentChoices } from "@/lib/categories";
 
 import { deleteCategory, setCategoryArchived, updateCategory } from "../actions";
 import { CategoryForm } from "../category-form";
@@ -68,13 +68,13 @@ async function EditCategory({ params }: { params: PageProps<"/categories/[id]">[
         </p>
       ) : (
         <ArchiveDeleteZone
-          thing="category"
+          thing={categoryNoun(category)}
           name={category.name}
           archived={category.archived}
           onArchive={setCategoryArchived.bind(null, category.id)}
           onDelete={deleteCategory.bind(null, category.id)}
-          archiveHint="Hides the category when you add a transaction. Its history stays in reports."
-          unarchiveHint="Shows the category when you add a transaction again."
+          archiveHint={`Hides the ${categoryNoun(category)} when you add a transaction. Its history stays in reports.`}
+          unarchiveHint={`Shows the ${categoryNoun(category)} when you add a transaction again.`}
         />
       )}
     </>
