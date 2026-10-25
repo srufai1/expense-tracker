@@ -1,20 +1,8 @@
-import { ChevronRight, Download, Landmark, LogOut, Repeat, Tags, Target } from "lucide-react";
+import { ChevronRight, Download, Landmark, Repeat, Settings, Tags, Target } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Suspense } from "react";
 
 import { PageHeader } from "@/components/app-shell/page-header";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { requireUser } from "@/lib/auth";
-
-import { formatRateDate } from "@/lib/fx";
-
-import { signOut } from "../actions";
-import { setWeeklyEmail } from "./email-actions";
-import { getEmailSettings } from "./email-data";
-import { WeeklyEmailSwitch } from "./weekly-email-switch";
-import { ThemePicker } from "./theme-picker";
 
 export const metadata: Metadata = { title: "More" };
 
@@ -22,9 +10,6 @@ export default function MorePage() {
   return (
     <>
       <PageHeader title="More" />
-      <Suspense fallback={<p className="h-5 text-sm text-muted-foreground">Loading…</p>}>
-        <AccountEmail />
-      </Suspense>
 
       <nav aria-label="Money" className="overflow-hidden rounded-2xl border bg-card">
         <Link
@@ -67,6 +52,16 @@ export default function MorePage() {
           <span className="flex-1">Budgets &amp; goals</span>
           <ChevronRight className="size-4 text-muted-foreground" aria-hidden="true" />
         </Link>
+        <Link
+          href="/settings"
+          className="flex min-h-13 items-center gap-3 border-t px-4 py-3 font-semibold hover:bg-muted/50 focus-visible:bg-muted focus-visible:outline-none"
+        >
+          <span className="flex size-8 items-center justify-center rounded-lg bg-accent text-accent-foreground">
+            <Settings className="size-4" aria-hidden="true" />
+          </span>
+          <span className="flex-1">Settings</span>
+          <ChevronRight className="size-4 text-muted-foreground" aria-hidden="true" />
+        </Link>
       </nav>
 
       <section aria-labelledby="backup" className="flex flex-col gap-2">
@@ -89,62 +84,6 @@ export default function MorePage() {
           </span>
         </a>
       </section>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Weekly email</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Suspense fallback={<div className="h-24" aria-hidden="true" />}>
-            <WeeklyEmail />
-          </Suspense>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Theme</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ThemePicker />
-        </CardContent>
-      </Card>
-
-      <form action={signOut}>
-        <Button type="submit" variant="outline" size="lg" className="h-12 w-full text-base text-destructive">
-          <LogOut aria-hidden="true" />
-          Sign out
-        </Button>
-      </form>
     </>
-  );
-}
-
-async function AccountEmail() {
-  const user = await requireUser();
-  return <p className="text-sm text-muted-foreground">{user.email}</p>;
-}
-
-// Screen 8: the Monday email (D-17) on or off, where it goes, and the last
-// week sent.
-async function WeeklyEmail() {
-  const settings = await getEmailSettings();
-  return (
-    <div className="flex flex-col gap-3">
-      <p className="text-sm text-muted-foreground">
-        Every Monday morning: last week&apos;s summary, budget alerts and suggestions, with the PDF report attached.
-      </p>
-      <WeeklyEmailSwitch on={settings.on} onChange={setWeeklyEmail} />
-      <p className="text-xs break-words text-muted-foreground">
-        Sent to {settings.address ?? "your sign-in address"}.
-        {settings.last
-          ? settings.last.status === "sent"
-            ? ` Last sent for the week of ${formatRateDate(settings.last.weekStart)}.`
-            : settings.last.status === "failed"
-              ? ` The email for the week of ${formatRateDate(settings.last.weekStart)} could not be sent yet; it is tried again on the next run.`
-              : ` The email for the week of ${formatRateDate(settings.last.weekStart)} could not be confirmed as sent. It is not sent again, so it never arrives twice.`
-          : ""}
-      </p>
-    </div>
   );
 }
