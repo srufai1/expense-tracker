@@ -1,4 +1,4 @@
-import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/password-input";
 import { Label } from "@/components/ui/label";
 
 // "New password" and "New password again", shared by the reset page and
@@ -8,10 +8,9 @@ export function NewPasswordFields({ invalid }: { invalid?: "password" | "confirm
     <>
       <div className="flex flex-col gap-2">
         <Label htmlFor="password">New password</Label>
-        <Input
+        <PasswordInput
           id="password"
           name="password"
-          type="password"
           autoComplete="new-password"
           required
           minLength={8}
@@ -26,10 +25,9 @@ export function NewPasswordFields({ invalid }: { invalid?: "password" | "confirm
       </div>
       <div className="flex flex-col gap-2">
         <Label htmlFor="confirm">New password again</Label>
-        <Input
+        <PasswordInput
           id="confirm"
           name="confirm"
-          type="password"
           autoComplete="new-password"
           required
           maxLength={72}

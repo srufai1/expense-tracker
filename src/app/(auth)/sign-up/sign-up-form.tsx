@@ -4,6 +4,7 @@ import { useActionState } from "react";
 
 import { FormErrorDialog } from "@/components/form-error-dialog";
 import { Button } from "@/components/ui/button";
+import { PasswordInput } from "@/components/password-input";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
@@ -42,10 +43,9 @@ export function SignUpForm() {
 
       <div className="flex flex-col gap-2">
         <Label htmlFor="password">Password</Label>
-        <Input
+        <PasswordInput
           id="password"
           name="password"
-          type="password"
           autoComplete="new-password"
           required
           minLength={8}
@@ -61,10 +61,9 @@ export function SignUpForm() {
 
       <div className="flex flex-col gap-2">
         <Label htmlFor="confirm">Password again</Label>
-        <Input
+        <PasswordInput
           id="confirm"
           name="confirm"
-          type="password"
           autoComplete="new-password"
           required
           maxLength={72}

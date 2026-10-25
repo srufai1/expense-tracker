@@ -6,6 +6,7 @@ import { useActionState } from "react";
 
 import { FormErrorDialog } from "@/components/form-error-dialog";
 import { Button } from "@/components/ui/button";
+import { PasswordInput } from "@/components/password-input";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
@@ -65,10 +66,9 @@ export function SignInForm() {
             Forgot password?
           </Link>
         </div>
-        <Input
+        <PasswordInput
           id="password"
           name="password"
-          type="password"
           autoComplete="current-password"
           aria-invalid={state.field === "password"}
           required
