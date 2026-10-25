@@ -3,8 +3,9 @@
 
 // Paths anyone can open without signing in. The daily job (Vercel Cron)
 // has no session; its route checks the CRON_SECRET header itself. Sign-up
-// needs the invite code (D-45).
-const PUBLIC_PATHS = ["/sign-in", "/sign-up", "/api/cron"];
+// needs the invite code (D-45). Forgot password asks for an email, and
+// /auth/callback is where the reset email's link returns (D-48).
+const PUBLIC_PATHS = ["/sign-in", "/sign-up", "/forgot-password", "/auth/callback", "/api/cron"];
 
 export function isPublicPath(pathname: string) {
   return PUBLIC_PATHS.some(

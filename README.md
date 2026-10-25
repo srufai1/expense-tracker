@@ -137,6 +137,9 @@ Postgres, so the database rules are tested on every push.
    After adding them, redeploy (Deployments → ⋯ → Redeploy).
 4. **Supabase Auth URL:** Authentication → URL Configuration → Site URL =
    your Vercel address (for example `https://expense-tracker-xyz.vercel.app`).
+   Under **Redirect URLs**, add `https://<your-app>.vercel.app/**` and
+   `http://localhost:3000/**`: the password reset email (D-48) may only
+   send people back to these addresses.
 5. **The daily job** (`vercel.json`) runs once a day around 07:00 (UTC, the
    same as Accra). It fetches the exchange rate, creates recurring items and
    sends the Monday email. To run it by hand once:

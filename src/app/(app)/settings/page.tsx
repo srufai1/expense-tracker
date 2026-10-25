@@ -9,6 +9,7 @@ import { requireUser } from "@/lib/auth";
 import { formatRateDate } from "@/lib/fx";
 
 import { signOut } from "../actions";
+import { ChangePasswordForm } from "./change-password-form";
 import { setWeeklyEmail } from "./email-actions";
 import { getEmailSettings } from "./email-data";
 import { ThemePicker } from "./theme-picker";
@@ -17,7 +18,8 @@ import { WeeklyEmailSwitch } from "./weekly-email-switch";
 export const metadata: Metadata = { title: "Settings" };
 
 // Settings (D-47), opened from the profile menu or More: the signed-in
-// account, the Monday email, the theme and Sign out. These were on More.
+// account, Change password (D-48), the Monday email, the theme and Sign
+// out.
 export default function SettingsPage() {
   return (
     <>
@@ -31,6 +33,15 @@ export default function SettingsPage() {
           <Suspense fallback={<p className="h-5 text-sm text-muted-foreground">Loading…</p>}>
             <AccountEmail />
           </Suspense>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Change password</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ChangePasswordForm />
         </CardContent>
       </Card>
 
