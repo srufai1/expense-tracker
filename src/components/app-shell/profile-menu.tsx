@@ -18,10 +18,12 @@ import {
 export function ProfileMenu({
   email,
   initial,
+  photoUrl,
   signOut,
 }: {
   email: string | null;
   initial: string;
+  photoUrl: string | null;
   signOut: () => Promise<void>;
 }) {
   const [pending, startTransition] = useTransition();
@@ -30,9 +32,15 @@ export function ProfileMenu({
     <DropdownMenu>
       <DropdownMenuTrigger
         aria-label="Profile menu"
-        className="flex size-11 shrink-0 items-center justify-center rounded-full bg-primary text-base font-bold text-primary-foreground focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
+        className="flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary text-base font-bold text-primary-foreground focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
       >
-        {initial}
+        {photoUrl ? (
+          // The profile photo (D-50): a signed URL to a small private file.
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={photoUrl} alt="" className="size-full object-cover" />
+        ) : (
+          initial
+        )}
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-64">
         <DropdownMenuLabel className="flex flex-col gap-0.5">

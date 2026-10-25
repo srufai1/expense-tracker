@@ -17,14 +17,15 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { shrinkPhoto } from "@/components/shrink-photo";
 import {
   checkPhotoType,
   checkShrunkSize,
   RECEIPT_BUCKET,
   RECEIPT_JPEG_QUALITY,
+  RECEIPT_MAX_SIDE,
   RECEIPT_URL_SECONDS,
   receiptPath,
-  scaledSize,
 } from "@/lib/receipts";
 import { createClient } from "@/lib/supabase/client";
 
@@ -53,7 +54,8 @@ export function ReceiptCard({
       if (typeError) return setFailure({ message: typeError });
       let photo: Blob;
       try {
-        photo = await shrink(file);
+        // About 1200 px on the longer side, as JPEG (§6.9, D-50).
+        photo = await shrinkPhoto(file, RECEIPT_MAX_SIDE, RECEIPT_JPEG_QUALITY);
       } catch {
         return setFailure({ message: "This photo cannot be read here. Try a JPEG or PNG photo." });
       }
@@ -165,22 +167,5 @@ export function ReceiptCard({
         ) : null}
       </div>
     </section>
-  );
-}
-
-// About 1600 px on the longer side, as JPEG (§6.9). The photo's own
-// rotation (EXIF) is applied, so it is not saved sideways.
-async function shrink(file: File): Promise<Blob> {
-  const bitmap = await createImageBitmap(file, { imageOrientation: "from-image" });
-  const { width, height } = scaledSize(bitmap.width, bitmap.height);
-  const canvas = document.createElement("canvas");
-  canvas.width = width;
-  canvas.height = height;
-  const context = canvas.getContext("2d");
-  if (!context) throw new Error("No canvas");
-  context.drawImage(bitmap, 0, 0, width, height);
-  bitmap.close();
-  return new Promise((resolve, reject) =>
-    canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error("No JPEG"))), "image/jpeg", RECEIPT_JPEG_QUALITY),
   );
 }
