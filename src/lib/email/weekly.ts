@@ -39,7 +39,7 @@ export function weeklyEmail(report: Report, meta: { title: string; appName: stri
   const budgetTitle = report.budgets ? `Budgets (${formatMonth(report.budgets.month)})` : "Budgets";
   const tips = report.suggestions.slice(0, TOP_SUGGESTIONS);
   const attached = "The full report is attached as a PDF.";
-  const footer = `Sent by ${meta.appName}. You can turn this email off in More → Weekly email.`;
+  const footer = `Sent by ${meta.appName}. You can turn this email off in Settings → Weekly email.`;
 
   const text: string[] = [heading, ""];
   if (empty) text.push("Nothing recorded this week.", "");

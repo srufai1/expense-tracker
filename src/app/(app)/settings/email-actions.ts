@@ -16,5 +16,5 @@ export async function setWeeklyEmail(on: boolean): Promise<string | undefined> {
     .from("settings")
     .upsert({ weekly_email: on }, { onConflict: "user_id" });
   if (error) return "Check your internet connection and try again.";
-  revalidatePath("/more");
+  revalidatePath("/settings");
 }

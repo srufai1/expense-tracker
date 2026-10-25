@@ -77,7 +77,7 @@ describe("weeklyEmail (screen 9)", () => {
         "",
         "The full report is attached as a PDF.",
         "",
-        "Sent by Expense Tracker. You can turn this email off in More → Weekly email.",
+        "Sent by Expense Tracker. You can turn this email off in Settings → Weekly email.",
       ].join("\n"),
     );
     expect(report.suggestions.length).toBeGreaterThan(3);
