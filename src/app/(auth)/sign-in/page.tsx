@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { Suspense } from "react";
 
 import { appConfig } from "@/config/app";
+import { isSignUpOpen } from "@/lib/sign-up";
 
 import { SignInForm } from "./sign-in-form";
 
@@ -25,6 +27,16 @@ export default function SignInPage() {
       <Suspense fallback={<div className="h-64" aria-hidden="true" />}>
         <SignInForm />
       </Suspense>
+
+      {/* Invite-only sign-up (D-45): the link shows only when it is open. */}
+      {isSignUpOpen(process.env.SIGNUP_INVITE_CODE) ? (
+        <p className="text-center text-sm text-muted-foreground">
+          Have an invite code?{" "}
+          <Link href="/sign-up" className="inline-flex min-h-11 items-center font-semibold text-primary underline-offset-4 hover:underline">
+            Create an account
+          </Link>
+        </p>
+      ) : null}
     </main>
   );
 }

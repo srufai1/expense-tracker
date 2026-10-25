@@ -2,8 +2,9 @@
 // Kept free of Next.js and Supabase so it can be tested on its own.
 
 // Paths anyone can open without signing in. The daily job (Vercel Cron)
-// has no session; its route checks the CRON_SECRET header itself.
-const PUBLIC_PATHS = ["/sign-in", "/api/cron"];
+// has no session; its route checks the CRON_SECRET header itself. Sign-up
+// needs the invite code (D-45).
+const PUBLIC_PATHS = ["/sign-in", "/sign-up", "/api/cron"];
 
 export function isPublicPath(pathname: string) {
   return PUBLIC_PATHS.some(
@@ -27,8 +28,8 @@ export function getRedirect({
     return `/sign-in?next=${encodeURIComponent(pathname + search)}`;
   }
 
-  // A signed-in visitor has no reason to see the sign-in page.
-  if (signedIn && pathname === "/sign-in") return "/";
+  // A signed-in visitor has no reason to see the sign-in or sign-up page.
+  if (signedIn && (pathname === "/sign-in" || pathname === "/sign-up")) return "/";
 
   return null;
 }

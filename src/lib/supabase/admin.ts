@@ -7,9 +7,11 @@ import type { Database } from "@/types/database";
 import { getSupabaseEnv } from "./env";
 
 // Supabase client with the SECRET key. It bypasses Row-Level Security, so it
-// is used in one place only: the daily job (src/app/api/cron/daily), which
-// runs without a signed-in user (DESIGN §3, security rule 1). Never import
-// it into a page, a Server Action or a client component.
+// is used in two places only, both without a signed-in user (DESIGN §3,
+// security rule 1): the daily job (src/app/api/cron/daily), and the invite
+// sign-up action (src/app/(auth)/sign-up), after the invite code matched
+// (D-45). Never import it into a page, another Server Action or a client
+// component.
 export function createAdminClient() {
   const { url } = getSupabaseEnv();
   const secretKey = process.env.SUPABASE_SECRET_KEY;
