@@ -9,10 +9,10 @@ describe("receiptPath (§6.9)", () => {
 });
 
 describe("scaledSize", () => {
-  it("shrinks the longer side to 1600 px and keeps the shape", () => {
-    expect(scaledSize(4032, 3024)).toEqual({ width: 1600, height: 1200 });
-    expect(scaledSize(3024, 4032)).toEqual({ width: 1200, height: 1600 });
-    expect(scaledSize(4000, 1)).toEqual({ width: 1600, height: 1 });
+  it("shrinks the longer side to 1200 px and keeps the shape (D-50: about 100-150 KB)", () => {
+    expect(scaledSize(4032, 3024)).toEqual({ width: 1200, height: 900 });
+    expect(scaledSize(3024, 4032)).toEqual({ width: 900, height: 1200 });
+    expect(scaledSize(4000, 1)).toEqual({ width: 1200, height: 1 });
   });
 
   it("never makes a small photo bigger", () => {
