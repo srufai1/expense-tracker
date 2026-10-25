@@ -3,6 +3,8 @@ export const appConfig = {
   name: "Expense Tracker",
   shortName: "Expenses",
   description: "Personal income and spending tracker with weekly reports.",
+  // The short line under the name on the sign-in and sign-up pages.
+  tagline: "Every cedi, in one place.",
   // Africa/Accra is UTC+0 all year (no daylight saving).
   timeZone: "Africa/Accra",
   // D-34: Resend's test sender. It can only email the Resend account
