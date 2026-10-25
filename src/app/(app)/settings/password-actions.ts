@@ -1,6 +1,7 @@
 "use server";
 
 import { requireUser } from "@/lib/auth";
+import { lockoutMessage } from "@/lib/lockout";
 import { parseNewPassword, passwordUpdateError } from "@/lib/password";
 import { createClient } from "@/lib/supabase/server";
 
@@ -20,14 +21,23 @@ export async function changePassword(_previous: ChangePasswordState, formData: F
   if (!parsed.ok) return { error: parsed.error, field: parsed.field };
 
   const supabase = await createClient();
+  // 5 wrong current passwords lock Change password for 20 minutes (D-49).
+  const lock = await supabase.rpc("auth_attempt_lock", { p_kind: "password", p_subject: null });
+  if (lock.data) return { error: lockoutMessage(lock.data, new Date()), field: "current" };
+
   const check = await supabase.auth.signInWithPassword({ email: user.email ?? "", password: current });
   if (check.error) {
     const refused = check.error.status && check.error.status < 500 && check.error.status !== 429;
+    if (refused) {
+      const failed = await supabase.rpc("auth_attempt_failed", { p_kind: "password", p_subject: null });
+      if (failed.data) return { error: lockoutMessage(failed.data, new Date()), field: "current" };
+    }
     return {
       error: refused ? "Your current password is not right." : passwordUpdateError(undefined, check.error.status),
       field: "current",
     };
   }
+  await supabase.rpc("auth_attempt_cleared", { p_kind: "password" });
   const { error } = await supabase.auth.updateUser({ password: parsed.password });
   if (error) return { error: passwordUpdateError(error.code, error.status), field: "password" };
   return { done: Date.now() };
