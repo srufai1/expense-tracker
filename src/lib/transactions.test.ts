@@ -15,6 +15,8 @@ import {
   parseTransactionForm,
   totalsInGhs,
   transactionSaveError,
+  addedBySchoolMoney,
+  SCHOOL_MONEY,
   type ActivityItem,
   type TransactionInput,
 } from "./transactions";
@@ -217,6 +219,16 @@ describe("buildTransactionRow", () => {
     expect(
       buildTransactionRow(input({ currency: "GHS", amountMinor: 99_999_999_999, rate: "0.5" }), "USD", null),
     ).toEqual({ ok: false, errors: { accountAmount: "The amount is too large." } });
+  });
+});
+
+describe("income added by School money (D-54)", () => {
+  it("is recognised when the database refuses to change or delete it", () => {
+    expect(addedBySchoolMoney("transactions: added by School money; change it there")).toBe(true);
+    expect(addedBySchoolMoney('update or delete on table "transactions" violates foreign key constraint "mc_shares_transaction_id_fkey"')).toBe(true);
+    expect(addedBySchoolMoney('violates foreign key constraint "book_orders_transaction_id_fkey"')).toBe(true);
+    expect(addedBySchoolMoney("transactions: account not found")).toBe(false);
+    expect(transactionSaveError("23514", "transactions: added by School money; change it there")).toEqual({ amount: SCHOOL_MONEY });
   });
 });
 
