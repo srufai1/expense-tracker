@@ -7,6 +7,7 @@ import { Suspense } from "react";
 import { PageHeader } from "@/components/app-shell/page-header";
 import { ArchiveDeleteZone } from "@/components/archive-delete-zone";
 import { Button } from "@/components/ui/button";
+import { ViewDetails } from "@/components/view-details";
 import { categoryNoun, editCategoryTitle, parentChoices, subCategoryDeleteNote } from "@/lib/categories";
 
 import { deleteCategory, deleteSubCategory, setCategoryArchived, updateCategory } from "../actions";
@@ -65,9 +66,9 @@ async function EditCategory({ params }: { params: PageProps<"/categories/[id]">[
       ) : null}
 
       {isSystem ? (
-        <p className="border-t pt-5 text-sm text-muted-foreground">
+        <ViewDetails className="border-t pt-5">
           Transfer fees are saved here, so this category cannot be archived or deleted. You can rename it.
-        </p>
+        </ViewDetails>
       ) : (
         <ArchiveDeleteZone
           thing={categoryNoun(category)}

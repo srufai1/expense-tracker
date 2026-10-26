@@ -16,6 +16,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { ViewDetails } from "@/components/view-details";
 
 // Archive (hide, keep history) and delete (remove for good), shared by the
 // edit pages. The actions return an error message when they cannot finish,
@@ -72,7 +73,7 @@ export function ArchiveDeleteZone({
             {archived ? <ArchiveRestore aria-hidden="true" /> : <Archive aria-hidden="true" />}
             {archived ? `Unarchive ${thing}` : `Archive ${thing}`}
           </Button>
-          <p className="text-xs text-muted-foreground">{archived ? unarchiveHint : archiveHint}</p>
+          <ViewDetails>{archived ? unarchiveHint : archiveHint}</ViewDetails>
         </>
       ) : null}
 

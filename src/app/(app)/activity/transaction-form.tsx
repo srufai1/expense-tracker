@@ -7,6 +7,7 @@ import { NativeSelect } from "@/components/native-select";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ViewDetails } from "@/components/view-details";
 import { errorList, firstInvalidField } from "@/lib/form-errors";
 import { pickRate, RATE_ATTRIBUTION, rateHint, sameRate, type StoredRate } from "@/lib/fx";
 import { CURRENCIES, formatAmountForInput, formatMoney, type Currency } from "@/lib/money";
@@ -286,9 +287,9 @@ export function TransactionForm({
             aria-describedby={`accountAmount-hint${errors.accountAmount ? " accountAmount-error" : ""}`}
             className="h-12 text-base tabular-nums"
           />
-          <p id="accountAmount-hint" className="text-xs text-muted-foreground">
+          <ViewDetails id="accountAmount-hint">
             Worked out from the rate. If your bank or MoMo charged a different amount, type that instead.
-          </p>
+          </ViewDetails>
           <ScreenReaderError id="accountAmount-error" message={errors.accountAmount} />
         </div>
       ) : (

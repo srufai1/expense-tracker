@@ -5,6 +5,7 @@ import { Suspense } from "react";
 import { PageHeader } from "@/components/app-shell/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ViewDetails } from "@/components/view-details";
 import { formatRateDate } from "@/lib/fx";
 
 import { signOut } from "../actions";
@@ -105,9 +106,6 @@ async function WeeklyEmail() {
   const settings = await getEmailSettings();
   return (
     <div className="flex flex-col gap-3">
-      <p className="text-sm text-muted-foreground">
-        Every Monday morning: last week&apos;s summary, budget alerts and suggestions, with the PDF report attached.
-      </p>
       <WeeklyEmailSwitch on={settings.on} onChange={setWeeklyEmail} />
       <p className="text-xs break-words text-muted-foreground">
         Sent to {settings.address ?? "your sign-in address"}.
@@ -119,6 +117,9 @@ async function WeeklyEmail() {
               : ` The email for the week of ${formatRateDate(settings.last.weekStart)} could not be confirmed as sent. It is not sent again, so it never arrives twice.`
           : ""}
       </p>
+      <ViewDetails>
+        Every Monday morning: last week&apos;s summary, budget alerts and suggestions, with the PDF report attached.
+      </ViewDetails>
     </div>
   );
 }

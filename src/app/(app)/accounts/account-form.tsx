@@ -6,6 +6,7 @@ import { FormErrorDialog } from "@/components/form-error-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ViewDetails } from "@/components/view-details";
 import { ACCOUNT_TYPES, parseAccountForm, type AccountFormErrors } from "@/lib/accounts";
 import { errorList, firstInvalidField } from "@/lib/form-errors";
 import { CURRENCIES } from "@/lib/money";
@@ -129,9 +130,7 @@ export function AccountForm({
           <span className="text-sm font-medium">Currency</span>
           <input type="hidden" name="currency" value={values.currency} />
           <p className="text-base font-bold">{values.currency}</p>
-          <p className="text-xs text-muted-foreground">
-            This account has transactions, so its currency cannot change.
-          </p>
+          <ViewDetails>This account has transactions, so its currency cannot change.</ViewDetails>
         </div>
       ) : (
         <fieldset className="flex flex-col gap-2" aria-describedby={errors.currency ? "currency-error" : undefined}>
@@ -165,7 +164,7 @@ export function AccountForm({
       <Field
         id="openingBalance"
         label="Opening balance"
-        hint="Use a minus sign for an overdraft or money owed on a card, e.g. -250."
+        details="Use a minus sign for an overdraft or money owed on a card, e.g. -250."
         error={errors.openingBalance}
       >
         <Input
@@ -184,7 +183,7 @@ export function AccountForm({
       <Field
         id="openingBalanceOn"
         label="Balance on"
-        hint="The day this balance was true. Transactions before it do not change the balance."
+        details="The day this balance was true. Transactions before it do not change the balance."
         error={errors.openingBalanceOn}
       >
         <Input
@@ -210,12 +209,15 @@ function Field({
   id,
   label,
   hint,
+  details,
   error,
   children,
 }: {
   id: string;
   label: string;
   hint?: string;
+  // An explanation, shown under "View details" (D-53).
+  details?: string;
   error?: string;
   children: React.ReactNode;
 }) {
@@ -228,6 +230,7 @@ function Field({
           {hint}
         </p>
       ) : null}
+      {details ? <ViewDetails id={`${id}-hint`}>{details}</ViewDetails> : null}
       <FieldError id={`${id}-error`} message={error} />
     </div>
   );

@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { PageHeader } from "@/components/app-shell/page-header";
+import { ViewDetails } from "@/components/view-details";
 
 export const metadata: Metadata = { title: "More" };
 
@@ -76,13 +77,11 @@ export default function MorePage() {
           <span className="flex size-8 items-center justify-center rounded-lg bg-accent text-accent-foreground">
             <Download className="size-4" aria-hidden="true" />
           </span>
-          <span className="flex flex-1 flex-col">
-            Export everything (Excel)
-            <span className="text-xs font-normal text-muted-foreground">
-              Accounts, transactions, budgets, goals and recurring items. Keep a copy each month.
-            </span>
-          </span>
+          <span className="flex-1">Export everything (Excel)</span>
         </a>
+        <ViewDetails className="px-1">
+          Accounts, transactions, budgets, goals and recurring items. Keep a copy each month.
+        </ViewDetails>
       </section>
     </>
   );

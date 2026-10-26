@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
 import { PageHeader } from "@/components/app-shell/page-header";
+import { ViewDetails } from "@/components/view-details";
 import { requireUser } from "@/lib/auth";
 import { budgetFor } from "@/lib/budgets";
 import { categoryPath } from "@/lib/categories";
@@ -47,10 +48,10 @@ async function Budget({ params }: { params: PageProps<"/budgets/[categoryId]">["
     <>
       <h2 className="text-lg font-bold">{categoryPath(categories, category.id)}</h2>
       {parent ? (
-        <p className="text-sm text-muted-foreground">
+        <ViewDetails>
           A sub-category budget is part of {parent.name}&apos;s budget: together, the sub-category budgets may not
           be more than it.
-        </p>
+        </ViewDetails>
       ) : null}
 
       <BudgetForm

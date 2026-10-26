@@ -7,6 +7,7 @@ import { NativeSelect } from "@/components/native-select";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ViewDetails } from "@/components/view-details";
 import { errorList, firstInvalidField } from "@/lib/form-errors";
 import { CURRENCIES, type Currency } from "@/lib/money";
 import {
@@ -159,7 +160,7 @@ export function RecurringForm({
         <Field
           id="goalId"
           label="Goal"
-          hint="The money stays in its account: this only adds to the goal's progress."
+          details="The money stays in its account: this only adds to the goal's progress."
           error={errors.goalId}
         >
           <NativeSelect
@@ -227,7 +228,7 @@ export function RecurringForm({
         <Field
           id="toAccountId"
           label="To account"
-          hint="A recurring transfer stays in one currency, with no fee."
+          details="A recurring transfer stays in one currency, with no fee."
           error={errors.toAccountId}
         >
           <NativeSelect
@@ -269,7 +270,7 @@ export function RecurringForm({
           </NativeSelect>
         </Field>
       ) : (
-        <Field id="dayOfMonth" label="On day" hint="29, 30 or 31: the last day in shorter months." error={errors.dayOfMonth}>
+        <Field id="dayOfMonth" label="On day" details="29, 30 or 31: the last day in shorter months." error={errors.dayOfMonth}>
           <NativeSelect
             id="dayOfMonth"
             name="dayOfMonth"
@@ -331,9 +332,7 @@ export function RecurringForm({
         />
       </Field>
 
-      <p className="text-xs text-muted-foreground">
-        The daily job adds each item on its date. An item due today appears after the next run.
-      </p>
+      <ViewDetails>The daily job adds each item on its date. An item due today appears after the next run.</ViewDetails>
 
       <Button type="submit" size="lg" className="h-12 text-base" disabled={pending}>
         {pending ? "Saving…" : submitLabel}
@@ -346,12 +345,15 @@ function Field({
   id,
   label,
   hint,
+  details,
   error,
   children,
 }: {
   id: string;
   label: string;
   hint?: string;
+  // An explanation, shown under "View details" (D-53).
+  details?: string;
   error?: string;
   children: ReactNode;
 }) {
@@ -364,6 +366,7 @@ function Field({
           {hint}
         </p>
       ) : null}
+      {details ? <ViewDetails id={`${id}-hint`}>{details}</ViewDetails> : null}
       {/* Sighted users see the message in the pop-up (D-31). */}
       {error ? (
         <p id={`${id}-error`} className="sr-only">

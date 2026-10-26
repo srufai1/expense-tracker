@@ -7,6 +7,7 @@ import { NativeSelect } from "@/components/native-select";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ViewDetails } from "@/components/view-details";
 import { CATEGORY_KINDS, parseCategoryForm, type CategoryFormErrors, type CategoryKind } from "@/lib/categories";
 import { errorList, firstInvalidField } from "@/lib/form-errors";
 
@@ -138,9 +139,9 @@ export function CategoryForm({
                   </option>
                 ))}
             </NativeSelect>
-            <p id="parentId-hint" className="text-xs text-muted-foreground">
+            <ViewDetails id="parentId-hint">
               Choose a category to make this a sub-category of it, e.g. Food › Snacks.
-            </p>
+            </ViewDetails>
             <ScreenReaderError id="parentId-error" message={errors.parentId} />
           </>
         )}
