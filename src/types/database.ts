@@ -627,6 +627,11 @@ export type Database = {
       school_undo_handover: { Args: { p_id: string }; Returns: undefined };
       books_give_out: { Args: { p_order_ids: string[]; p_given_on: string }; Returns: undefined };
       books_undo_give: { Args: { p_order_id: string }; Returns: undefined };
+      // What is held for the school, added up per source and fee.
+      school_held_by_source: {
+        Args: Record<string, never>;
+        Returns: { source: "morning" | "fund_morning" | "fund_books" | "fee" | "books"; ref_id: string | null; amount_minor: number }[];
+      };
     };
     Enums: { [_ in never]: never };
     CompositeTypes: { [_ in never]: never };

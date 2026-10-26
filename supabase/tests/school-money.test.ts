@@ -184,6 +184,8 @@ describe("Morning classes", () => {
   it("unsettling unlocks the week and removes my income", async () => {
     const [{ id }] = await rows<{ id: string }>(ALICE, "select id from public.mc_weeks");
     // The spend from the savings fund must go first: the fund cannot go below 0.
+    await expect(rows(ALICE, "select public.mc_unsettle($1)", [id])).rejects.toThrow(/savings from this week were already used/);
+    expect(await rows(ALICE, "select id from public.mc_weeks")).toHaveLength(1);
     await rows(ALICE, "delete from public.school_fund_spends");
     await rows(ALICE, "select public.mc_unsettle($1)", [id]);
     expect(await rows(ALICE, "select id from public.mc_weeks")).toEqual([]);

@@ -1,6 +1,7 @@
 import "server-only";
 
 import { requireUser } from "@/lib/auth";
+import { fetchAllPages } from "@/lib/pages";
 import { formatDate } from "@/lib/dates";
 import type { MorningDay } from "@/lib/school/morning";
 import type { Fund, FundPurpose, NoClassReason, Recipient } from "@/lib/school/fees";
@@ -77,7 +78,7 @@ export type Held = {
 // What is held for the school, from the school_cash_moves view.
 export async function getHeld(): Promise<Held> {
   const supabase = await client();
-  const { data, error } = await supabase.from("school_cash_moves").select("source, ref_id, amount_minor");
+  const { data, error } = await supabase.rpc("school_held_by_source");
   if (error) fail("school money", error);
   const held: Held = { totalMinor: 0, morningMinor: 0, fundMorningMinor: 0, fundBooksMinor: 0, booksMinor: 0, byFee: new Map() };
   for (const row of data) {
@@ -97,9 +98,18 @@ export async function getHeldTotal(): Promise<number | null> {
   const { data: settings, error: settingsError } = await supabase.from("school_settings").select("user_id").maybeSingle();
   if (settingsError) fail("the School money settings", settingsError);
   if (!settings) return null;
-  const { data, error } = await supabase.from("school_cash_moves").select("amount_minor");
+  const { data, error } = await supabase.rpc("school_held_by_source");
   if (error) fail("school money", error);
   return data.reduce((total, row) => total + row.amount_minor, 0);
+}
+
+// Every matching row, page by page: the API returns at most 1,000 rows per
+// request and silently leaves out the rest (src/lib/pages.ts). Errors
+// throw, like the single reads here.
+async function everyRow<T>(
+  page: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: { message: string } | null }>,
+): Promise<{ data: T[]; error: null }> {
+  return { data: await fetchAllPages(page), error: null };
 }
 
 // --- Morning classes -----------------------------------------------------
@@ -208,7 +218,7 @@ export async function isWeekSettled(monday: string): Promise<boolean> {
 
 export async function getSharers(): Promise<Sharer[]> {
   const supabase = await client();
-  const { data, error } = await supabase.from("mc_sharers").select("id, name, is_me, archived_at");
+  const { data, error } = await everyRow((from, to) => supabase.from("mc_sharers").select("id, name, is_me, archived_at").order("id").range(from, to));
   if (error) fail("the sharers", error);
   return data
     .map((s) => ({ id: s.id, name: s.name, isMe: s.is_me, archived: s.archived_at !== null }))
@@ -218,7 +228,7 @@ export async function getSharers(): Promise<Sharer[]> {
 // Shares of settled weeks not yet ticked as paid.
 export async function getUnpaidShares(): Promise<{ count: number; amountMinor: number }> {
   const supabase = await client();
-  const { data, error } = await supabase.from("mc_shares").select("amount_minor").is("paid_on", null);
+  const { data, error } = await everyRow((from, to) => supabase.from("mc_shares").select("amount_minor").is("paid_on", null).order("id").range(from, to));
   if (error) fail("the shares", error);
   return { count: data.length, amountMinor: data.reduce((total, s) => total + s.amount_minor, 0) };
 }
@@ -309,9 +319,9 @@ function purposeLabel(purpose: FundPurpose): string {
 export async function getFundBalances(): Promise<Record<Fund, number>> {
   const supabase = await client();
   const [weeks, orders, spends] = await Promise.all([
-    supabase.from("mc_weeks").select("savings_minor"),
-    supabase.from("book_orders").select("teachers_minor").not("given_on", "is", null),
-    supabase.from("school_fund_spends").select("fund, amount_minor"),
+    everyRow((from, to) => supabase.from("mc_weeks").select("savings_minor").order("id").range(from, to)),
+    everyRow((from, to) => supabase.from("book_orders").select("teachers_minor").not("given_on", "is", null).order("id").range(from, to)),
+    everyRow((from, to) => supabase.from("school_fund_spends").select("fund, amount_minor").order("id").range(from, to)),
   ]);
   if (weeks.error) fail("the funds", weeks.error);
   if (orders.error) fail("the funds", orders.error);
@@ -329,12 +339,9 @@ export type Student = { id: string; name: string; className: string };
 
 export async function getStudents(): Promise<Student[]> {
   const supabase = await client();
-  const { data, error } = await supabase
-    .from("school_students")
-    .select("id, name, class_name")
-    .is("archived_at", null)
-    .order("name");
-  if (error) fail("students", error);
+  const { data } = await everyRow((from, to) =>
+    supabase.from("school_students").select("id, name, class_name").is("archived_at", null).order("name").order("id").range(from, to),
+  );
   return data.map((s) => ({ id: s.id, name: s.name, className: s.class_name }));
 }
 
@@ -342,7 +349,7 @@ export type FeeSummary = { id: string; name: string; amountMinor: number; archiv
 
 export async function getFees(): Promise<FeeSummary[]> {
   const supabase = await client();
-  const { data, error } = await supabase.from("school_fees").select("id, name, amount_minor, archived_at").order("created_at", { ascending: false });
+  const { data, error } = await everyRow((from, to) => supabase.from("school_fees").select("id, name, amount_minor, archived_at").order("created_at", { ascending: false }).order("id").range(from, to));
   if (error) fail("fees", error);
   return data.map((f) => ({ id: f.id, name: f.name, amountMinor: f.amount_minor, archived: f.archived_at !== null }));
 }
@@ -367,9 +374,17 @@ export async function getFee(id: string): Promise<FeeDetail | null> {
   notFoundOrFail("the fee", error);
   if (!fee) return null;
   const [students, payments, handovers] = await Promise.all([
-    supabase.from("school_fee_students").select("id, student_id, payable_minor").eq("fee_id", id),
-    supabase.from("school_fee_payments").select("id, fee_student_id, amount_minor, paid_on, note").order("paid_on"),
-    supabase.from("school_handovers").select("id, to_whom, amount_minor, handed_on, note").eq("fee_id", id).order("handed_on", { ascending: false }),
+    everyRow((from, to) => supabase.from("school_fee_students").select("id, student_id, payable_minor").eq("fee_id", id).order("id").range(from, to)),
+    everyRow((from, to) =>
+      supabase
+        .from("school_fee_payments")
+        .select("id, fee_student_id, amount_minor, paid_on, note, school_fee_students!inner(fee_id)")
+        .eq("school_fee_students.fee_id", id)
+        .order("paid_on")
+        .order("id")
+        .range(from, to),
+    ),
+    everyRow((from, to) => supabase.from("school_handovers").select("id, to_whom, amount_minor, handed_on, note").eq("fee_id", id).order("handed_on", { ascending: false }).order("id").range(from, to)),
   ]);
   if (students.error) fail("the fee", students.error);
   if (payments.error) fail("the fee", payments.error);
@@ -401,9 +416,12 @@ export async function getFee(id: string): Promise<FeeDetail | null> {
 
 async function studentNames(supabase: Client, ids: string[]): Promise<Map<string, { name: string; className: string }>> {
   if (ids.length === 0) return new Map();
-  const { data, error } = await supabase.from("school_students").select("id, name, class_name").in("id", [...new Set(ids)]);
-  if (error) fail("students", error);
-  return new Map(data.map((s) => [s.id, { name: s.name, className: s.class_name }]));
+  // All students, page by page: a long list of ids would not fit in the address.
+  const { data } = await everyRow((from, to) =>
+    supabase.from("school_students").select("id, name, class_name").order("id").range(from, to),
+  );
+  const wanted = new Set(ids);
+  return new Map(data.filter((s) => wanted.has(s.id)).map((s) => [s.id, { name: s.name, className: s.class_name }]));
 }
 
 // --- Past questions books ------------------------------------------------
@@ -431,9 +449,9 @@ export type BooksOverview = {
 export async function getSubjects(): Promise<Subject[]> {
   const supabase = await client();
   const [subjects, purchases, orders] = await Promise.all([
-    supabase.from("book_subjects").select("id, name, price_minor, archived_at").order("name"),
-    supabase.from("book_purchases").select("subject_id, quantity"),
-    supabase.from("book_orders").select("subject_id, given_on"),
+    everyRow((from, to) => supabase.from("book_subjects").select("id, name, price_minor, archived_at").order("name").order("id").range(from, to)),
+    everyRow((from, to) => supabase.from("book_purchases").select("subject_id, quantity").order("id").range(from, to)),
+    everyRow((from, to) => supabase.from("book_orders").select("subject_id, given_on").order("id").range(from, to)),
   ]);
   if (subjects.error) fail("subjects", subjects.error);
   if (purchases.error) fail("subjects", purchases.error);
@@ -452,9 +470,9 @@ export async function getBooksOverview(): Promise<BooksOverview> {
   const supabase = await client();
   const [subjects, orders, payments, purchases] = await Promise.all([
     getSubjects(),
-    supabase.from("book_orders").select("student_id, price_minor, given_on, cost_minor, transport_minor, mine_minor, teachers_minor"),
-    supabase.from("book_payments").select("student_id, amount_minor"),
-    supabase.from("book_purchases").select("amount_minor"),
+    everyRow((from, to) => supabase.from("book_orders").select("student_id, price_minor, given_on, cost_minor, transport_minor, mine_minor, teachers_minor").order("id").range(from, to)),
+    everyRow((from, to) => supabase.from("book_payments").select("student_id, amount_minor").order("id").range(from, to)),
+    everyRow((from, to) => supabase.from("book_purchases").select("amount_minor").order("id").range(from, to)),
   ]);
   if (orders.error) fail("books", orders.error);
   if (payments.error) fail("books", payments.error);
@@ -515,9 +533,9 @@ export async function getBookStudent(id: string): Promise<{
   notFoundOrFail("the student", error);
   if (!student) return null;
   const [orders, payments, subjects] = await Promise.all([
-    supabase.from("book_orders").select("*").eq("student_id", id),
-    supabase.from("book_payments").select("id, amount_minor, paid_on, note").eq("student_id", id).order("paid_on"),
-    supabase.from("book_subjects").select("id, name"),
+    everyRow((from, to) => supabase.from("book_orders").select("*").eq("student_id", id).order("id").range(from, to)),
+    everyRow((from, to) => supabase.from("book_payments").select("id, amount_minor, paid_on, note").eq("student_id", id).order("paid_on").order("id").range(from, to)),
+    everyRow((from, to) => supabase.from("book_subjects").select("id, name").order("id").range(from, to)),
   ]);
   if (orders.error) fail("the student's books", orders.error);
   if (payments.error) fail("the student's books", payments.error);
@@ -551,7 +569,7 @@ export async function getBookStudent(id: string): Promise<{
 // The last copy given out of each subject: only that one can be undone.
 export async function getLastGivenSeq(): Promise<Map<string, number>> {
   const supabase = await client();
-  const { data, error } = await supabase.from("book_orders").select("subject_id, given_seq").not("given_seq", "is", null);
+  const { data, error } = await everyRow((from, to) => supabase.from("book_orders").select("subject_id, given_seq").not("given_seq", "is", null).order("id").range(from, to));
   if (error) fail("books", error);
   const last = new Map<string, number>();
   for (const o of data) last.set(o.subject_id, Math.max(last.get(o.subject_id) ?? 0, o.given_seq ?? 0));
@@ -561,8 +579,8 @@ export async function getLastGivenSeq(): Promise<Map<string, number>> {
 export async function getPurchases(): Promise<{ id: string; subject: string; quantity: number; amountMinor: number; boughtOn: string }[]> {
   const supabase = await client();
   const [purchases, subjects] = await Promise.all([
-    supabase.from("book_purchases").select("id, subject_id, quantity, amount_minor, bought_on").order("bought_on", { ascending: false }),
-    supabase.from("book_subjects").select("id, name"),
+    everyRow((from, to) => supabase.from("book_purchases").select("id, subject_id, quantity, amount_minor, bought_on").order("bought_on", { ascending: false }).order("id").range(from, to)),
+    everyRow((from, to) => supabase.from("book_subjects").select("id, name").order("id").range(from, to)),
   ]);
   if (purchases.error) fail("purchases", purchases.error);
   if (subjects.error) fail("purchases", subjects.error);

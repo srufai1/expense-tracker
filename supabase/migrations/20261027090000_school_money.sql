@@ -462,6 +462,11 @@ begin
   from public.mc_shares s where s.week_id = p_week_id and s.user_id = uid;
   delete from public.mc_weeks w where w.id = p_week_id and w.user_id = uid;
   delete from public.transactions t where t.id = any (v_transactions) and t.user_id = uid;
+  -- Spending from the savings fund must stay covered (D-54): a week whose
+  -- savings were already used cannot be undone until that spending is.
+  if public.school_fund_balance(uid, 'morning') < 0 then
+    raise exception 'mc_unsettle: savings from this week were already used' using errcode = '23514';
+  end if;
 end;
 $$;
 

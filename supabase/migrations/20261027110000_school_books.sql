@@ -190,6 +190,32 @@ begin
 end;
 $$;
 
+-- A purchase cannot be dated before copies already given out from later
+-- purchases: their costs were worked out in buying order and are frozen,
+-- so a copy slipped in before them would never be counted (D-56).
+create function public.book_purchases_check_order()
+returns trigger
+language plpgsql
+set search_path = ''
+as $$
+declare
+  v_before bigint;
+  v_given bigint;
+begin
+  select coalesce(sum(p.quantity), 0) into v_before from public.book_purchases p
+  where p.subject_id = new.subject_id
+    and (p.bought_on, p.created_at, p.id) < (new.bought_on, new.created_at, new.id);
+  select count(*) into v_given from public.book_orders o where o.subject_id = new.subject_id and o.given_on is not null;
+  if v_given > v_before then
+    raise exception 'book_purchases: books bought after this date were already given out' using errcode = '23514';
+  end if;
+  return new;
+end;
+$$;
+
+create trigger book_purchases_check_order before insert on public.book_purchases
+  for each row execute function public.book_purchases_check_order();
+
 create trigger book_purchases_check_delete before delete on public.book_purchases
   for each row execute function public.books_check_delete();
 create trigger book_orders_check_delete before delete on public.book_orders
@@ -343,7 +369,11 @@ begin
   if v_order.transaction_id is not null then
     delete from public.transactions t where t.id = v_order.transaction_id and t.user_id = uid;
   end if;
-  -- Taking back a paid-for book never leaves a payment short, so no check.
+  -- Taking back a paid-for book never leaves a payment short. But the
+  -- teachers' part it put in the book fund must not be spent already.
+  if public.school_fund_balance(uid, 'books') < 0 then
+    raise exception 'books_undo_give: the teachers'' part of this book was already used' using errcode = '23514';
+  end if;
 end;
 $$;
 
@@ -419,6 +449,20 @@ select o.user_id, o.account_id, o.given_on, 'books', null, -(o.transport_minor +
 from public.book_orders o
 where o.given_on is not null;
 
+-- What is held for the school, added up by the database (one row per
+-- source and fee), so a long history is never cut off by the API's row
+-- limit. Runs with the caller's rights: only their own moves.
+create function public.school_held_by_source()
+returns table (source text, ref_id uuid, amount_minor bigint)
+language sql
+stable
+set search_path = ''
+as $$
+  select m.source, m.ref_id, sum(m.amount_minor)::bigint
+  from public.school_cash_moves m
+  group by m.source, m.ref_id
+$$;
+
 alter table public.book_subjects enable row level security;
 alter table public.book_purchases enable row level security;
 alter table public.book_orders enable row level security;
@@ -473,5 +517,7 @@ grant execute on function public.books_student_paid(uuid) to authenticated;
 grant execute on function public.books_student_given(uuid) to authenticated;
 revoke execute on function public.books_give_out(uuid[], date) from public, anon;
 grant execute on function public.books_give_out(uuid[], date) to authenticated;
+revoke execute on function public.school_held_by_source() from public, anon;
+grant execute on function public.school_held_by_source() to authenticated;
 revoke execute on function public.books_undo_give(uuid) from public, anon;
 grant execute on function public.books_undo_give(uuid) to authenticated;

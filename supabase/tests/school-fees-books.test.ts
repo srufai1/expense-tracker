@@ -178,6 +178,26 @@ describe("past questions books", () => {
     await expect(rows(ALICE, "delete from public.book_payments where student_id = $1", [ama])).rejects.toThrow(/already given out/);
   });
 
+  it("cannot backdate a purchase before copies already given out", async () => {
+    // Maths copies 1 and 2 were given out (bought 21 and 22 Oct).
+    await expect(
+      rows(ALICE, "insert into public.book_purchases (subject_id, quantity, amount_minor, bought_on) values ($1, 1, 6000, '2026-10-20')", [maths]),
+    ).rejects.toThrow(/bought after this date were already given out/);
+    // On or after the last purchase is fine.
+    await rows(ALICE, "insert into public.book_purchases (subject_id, quantity, amount_minor, bought_on) values ($1, 1, 6000, '2026-10-23')", [maths]);
+  });
+
+  it("the database adds up what is held, per source", async () => {
+    const sums = await rows<{ source: string; amount_minor: number }>(ALICE, "select source, amount_minor from public.school_held_by_source() order by source");
+    const moves = await rows<{ source: string; total: number }>(ALICE, "select source, sum(amount_minor)::bigint as total from public.school_cash_moves group by source order by source");
+    expect(sums.map((s) => [s.source, Number(s.amount_minor)])).toEqual(moves.map((m) => [m.source, Number(m.total)]));
+    expect(await rows(BOB, "select * from public.school_held_by_source()")).toEqual([]);
+  });
+
+  it("undoing a give-out is refused while the teachers' part is spent", async () => {
+    await expect(rows(ALICE, "select public.books_undo_give($1)", [amaEnglish])).rejects.toThrow(/already used/);
+  });
+
   it("undoing the last give-out removes its income", async () => {
     await rows(ALICE, "delete from public.school_fund_spends where fund = 'books'");
     const before = await incomeTotal();
