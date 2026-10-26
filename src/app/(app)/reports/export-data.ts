@@ -12,6 +12,7 @@ import { getBudgetRows } from "../budgets/data";
 import { getCategories } from "../categories/data";
 import { getGoals } from "../goals/data";
 import { getRules } from "../recurring/data";
+import { getSchoolBackup } from "../school/data";
 
 const COLUMNS =
   "id, kind, occurred_on, account_id, category_id, to_account_id, amount_minor, currency, fx_rate, amount_ghs_minor, account_amount_minor, to_amount_minor, note";
@@ -41,19 +42,21 @@ export async function getExportTransactions(range: { first: string; last: string
 
 // Everything, for "Export everything" (the backup).
 export async function getBackupData(): Promise<BackupData> {
-  const [rows, accounts, categories, budgets, goals, rules] = await Promise.all([
+  const [rows, accounts, categories, budgets, goals, rules, school] = await Promise.all([
     getRows(),
     getAccounts(),
     getCategories(),
     getBudgetRows(),
     getGoals(),
     getRules(),
+    getSchoolBackup(),
   ]);
   const accountName = new Map(accounts.map((account) => [account.id, account.name]));
   const goalName = new Map(goals.map((goal) => [goal.id, goal.name]));
   return {
     accounts,
     categories,
+    school,
     transactions: exportTransactions(rows, accounts, categories),
     budgets,
     goals,

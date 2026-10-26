@@ -1,6 +1,7 @@
 import "server-only";
 
 import { requireUser } from "@/lib/auth";
+import type { SchoolBackup } from "@/lib/export/school-sheets";
 import { fetchAllPages } from "@/lib/pages";
 import { formatDate } from "@/lib/dates";
 import type { MorningDay } from "@/lib/school/morning";
@@ -592,4 +593,115 @@ export async function getPurchases(): Promise<{ id: string; subject: string; qua
     amountMinor: p.amount_minor,
     boughtOn: p.bought_on,
   }));
+}
+
+// --- Backup ------------------------------------------------------------------
+
+// Every School money record, for "Export everything" (D-57), or null when
+// School money is not set up. Read page by page, like the rest of the backup.
+export async function getSchoolBackup(): Promise<SchoolBackup | null> {
+  const settings = await getSchoolSettings();
+  if (!settings) return null;
+  const supabase = await client();
+  const [held, days, weeks, shares, spends, fees, feeStudents, feePayments, handovers, subjects, purchases, orders, bookPayments, students] =
+    await Promise.all([
+      supabase.rpc("school_held_by_source"),
+      everyRow((from, to) => supabase.from("mc_days").select(DAY_COLUMNS).order("day").range(from, to)),
+      everyRow((from, to) => supabase.from("mc_weeks").select("*").order("week_start").range(from, to)),
+      everyRow((from, to) => supabase.from("mc_shares").select("week_id, name, is_me, amount_minor, paid_on").order("id").range(from, to)),
+      everyRow((from, to) => supabase.from("school_fund_spends").select("fund, spent_on, amount_minor, purpose, note").order("id").range(from, to)),
+      everyRow((from, to) => supabase.from("school_fees").select("id, name, amount_minor, archived_at").order("created_at").order("id").range(from, to)),
+      everyRow((from, to) => supabase.from("school_fee_students").select("id, fee_id, student_id, payable_minor").order("id").range(from, to)),
+      everyRow((from, to) =>
+        supabase.from("school_fee_payments").select("fee_student_id, paid_on, amount_minor, note").order("id").range(from, to),
+      ),
+      everyRow((from, to) => supabase.from("school_handovers").select("fee_id, to_whom, handed_on, amount_minor, note").order("id").range(from, to)),
+      everyRow((from, to) => supabase.from("book_subjects").select("id, name, price_minor").order("name").order("id").range(from, to)),
+      everyRow((from, to) =>
+        supabase.from("book_purchases").select("subject_id, bought_on, quantity, amount_minor, note").order("id").range(from, to),
+      ),
+      everyRow((from, to) => supabase.from("book_orders").select("*").order("id").range(from, to)),
+      everyRow((from, to) => supabase.from("book_payments").select("student_id, paid_on, amount_minor, note").order("id").range(from, to)),
+      everyRow((from, to) => supabase.from("school_students").select("id, name, class_name").order("name").order("id").range(from, to)),
+    ]);
+  if (held.error) fail("school money", held.error);
+
+  const subjectName = new Map(subjects.data.map((s) => [s.id, s.name]));
+  const student = new Map(students.data.map((s) => [s.id, s]));
+  const bookStudentIds = new Set([...orders.data.map((o) => o.student_id), ...bookPayments.data.map((p) => p.student_id)]);
+
+  return {
+    accountName: settings.accountName,
+    heldMinor: held.data.reduce((total, row) => total + row.amount_minor, 0),
+    days: days.data.map(toDay),
+    weeks: weeks.data.map((w) => ({
+      weekStart: w.week_start,
+      settledOn: w.settled_on,
+      classDays: w.class_days,
+      collectedMinor: w.collected_minor,
+      schoolMinor: w.school_minor,
+      savingsMinor: w.savings_minor,
+      markersMinor: w.markers_minor,
+      assistantMinor: w.assistant_minor,
+      eachMinor: w.each_minor,
+      shares: shares.data
+        .filter((s) => s.week_id === w.id)
+        .sort((a, b) => Number(b.is_me) - Number(a.is_me) || a.name.localeCompare(b.name))
+        .map((s) => ({ name: s.name, isMe: s.is_me, amountMinor: s.amount_minor, paidOn: s.paid_on })),
+    })),
+    fundSpends: spends.data.map((s) => ({ fund: s.fund, spentOn: s.spent_on, amountMinor: s.amount_minor, purpose: s.purpose, note: s.note })),
+    fees: fees.data.map((fee) => ({
+      name: fee.name,
+      amountMinor: fee.amount_minor,
+      archived: fee.archived_at !== null,
+      students: feeStudents.data
+        .filter((fs) => fs.fee_id === fee.id)
+        .map((fs) => ({
+          name: student.get(fs.student_id)?.name ?? "?",
+          className: student.get(fs.student_id)?.class_name ?? "",
+          payableMinor: fs.payable_minor,
+          payments: feePayments.data
+            .filter((p) => p.fee_student_id === fs.id)
+            .map((p) => ({ paidOn: p.paid_on, amountMinor: p.amount_minor, note: p.note })),
+        }))
+        .sort((a, b) => a.name.localeCompare(b.name)),
+      handovers: handovers.data
+        .filter((h) => h.fee_id === fee.id)
+        .map((h) => ({ toWhom: h.to_whom, handedOn: h.handed_on, amountMinor: h.amount_minor, note: h.note })),
+    })),
+    subjects: subjects.data.map((s) => ({ name: s.name, priceMinor: s.price_minor })),
+    purchases: purchases.data.map((p) => ({
+      subject: subjectName.get(p.subject_id) ?? "?",
+      boughtOn: p.bought_on,
+      quantity: p.quantity,
+      amountMinor: p.amount_minor,
+      note: p.note,
+    })),
+    bookStudents: students.data
+      .filter((s) => bookStudentIds.has(s.id))
+      .map((s) => ({
+        name: s.name,
+        className: s.class_name,
+        orders: orders.data
+          .filter((o) => o.student_id === s.id)
+          .map((o) => ({
+            subject: subjectName.get(o.subject_id) ?? "?",
+            priceMinor: o.price_minor,
+            givenOn: o.given_on,
+            split:
+              o.given_on === null
+                ? null
+                : {
+                    costMinor: o.cost_minor ?? 0,
+                    transportMinor: o.transport_minor ?? 0,
+                    mineMinor: o.mine_minor ?? 0,
+                    teachersMinor: o.teachers_minor ?? 0,
+                  },
+          }))
+          .sort((a, b) => a.subject.localeCompare(b.subject)),
+        payments: bookPayments.data
+          .filter((p) => p.student_id === s.id)
+          .map((p) => ({ paidOn: p.paid_on, amountMinor: p.amount_minor, note: p.note })),
+      })),
+  };
 }
