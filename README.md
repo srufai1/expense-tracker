@@ -24,6 +24,7 @@ developer's confirmation.
 | 12 | the Monday email with the PDF attached |
 | 13 | receipt photos |
 | 14 | polish: one date format, dark mode and 360 px checks |
+| School money | More → School money (D-54 – D-56): Morning classes (daily entry, Friday split, savings fund), fees per student with hand-overs, past questions books (stock, give-out split, teachers' book fund). Held money is in the chosen account's balance but never income; only your own share is |
 
 ## Stack
 
@@ -224,6 +225,7 @@ src/
 ├─ hooks/
 ├─ lib/
 │  ├─ auth.ts             requireUser() — every data page calls it
+│  ├─ school/             School money rules: weekly split, fee status, form checks
 │  ├─ safe-redirect.ts    keeps ?next= redirects inside the app
 │  └─ supabase/           browser, server and proxy clients
 └─ proxy.ts               refreshes the session; sends signed-out visitors to /sign-in
