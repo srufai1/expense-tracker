@@ -90,7 +90,7 @@ export default function MorePage() {
           <span className="flex-1">Export everything (Excel)</span>
         </a>
         <ViewDetails className="px-1">
-          Accounts, transactions, budgets, goals and recurring items. Keep a copy each month.
+          Accounts, transactions, budgets, goals, recurring items and School money. Keep a copy each month.
         </ViewDetails>
       </section>
     </>

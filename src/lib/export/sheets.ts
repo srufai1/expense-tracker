@@ -4,6 +4,7 @@ import { categoryPath, type CategoryRow } from "../categories";
 import { formatMonth } from "../dates";
 import type { Currency } from "../money";
 import type { Report } from "../reports/build";
+import { schoolSheets, type SchoolBackup } from "./school-sheets";
 
 // What goes into the Excel files (DESIGN D-20), as plain rows, so it can be
 // tested without building a file. workbook.ts writes them with exceljs.
@@ -261,6 +262,8 @@ export type BackupData = {
     paused: boolean;
     note: string;
   }[];
+  // School money (D-57), or null when it is not set up.
+  school?: SchoolBackup | null;
 };
 
 const yesNo = (value: boolean) => (value ? "Yes" : "No");
@@ -381,5 +384,6 @@ export function everythingSheets(data: BackupData): Sheet[] {
         r.note,
       ]),
     },
+    ...(data.school ? schoolSheets(data.school) : []),
   ];
 }
