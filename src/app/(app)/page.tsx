@@ -1,4 +1,4 @@
-import { ChevronRight, Lightbulb, Nfc, TriangleAlert } from "lucide-react";
+import { ChevronRight, Lightbulb, Nfc, School, TriangleAlert } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
 
@@ -17,6 +17,7 @@ import { getAccounts } from "./accounts/data";
 import { getRateFor } from "./activity/rates";
 import { MoneyText } from "./accounts/money-text";
 import { getReport } from "./reports/data";
+import { getHeldTotal } from "./school/data";
 
 export default function HomePage() {
   return (
@@ -29,6 +30,9 @@ export default function HomePage() {
       </Suspense>
       <Suspense fallback={<div className="aspect-[1.586] rounded-2xl bg-muted" aria-hidden="true" />}>
         <BalanceCard />
+      </Suspense>
+      <Suspense fallback={null}>
+        <SchoolMoneyCard />
       </Suspense>
       <Suspense fallback={<div className="h-40 rounded-2xl bg-muted" aria-hidden="true" />}>
         <ThisWeek />
@@ -123,6 +127,28 @@ async function BalanceCard() {
       </Link>
       <InstallAppButton className="absolute top-3.5 right-14" />
     </div>
+  );
+}
+
+// School money held for others (D-54): part of the balance above, but not
+// the user's money. Shown once School money is set up.
+async function SchoolMoneyCard() {
+  const held = await getHeldTotal();
+  if (held === null) return null;
+  return (
+    <Link
+      href="/school"
+      className="flex min-h-14 items-center justify-between gap-3 rounded-2xl border bg-card px-4 py-3 hover:bg-muted/50 focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
+    >
+      <span className="flex items-center gap-2 text-sm font-semibold">
+        <School className="size-4 text-primary" aria-hidden="true" />
+        Holding for the school
+      </span>
+      <span className="flex items-center gap-1">
+        <MoneyText minor={held} currency="GHS" className="font-bold whitespace-nowrap" />
+        <ChevronRight className="size-4 text-muted-foreground" aria-hidden="true" />
+      </span>
+    </Link>
   );
 }
 

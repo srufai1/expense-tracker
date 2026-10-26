@@ -187,7 +187,16 @@ export function buildTransactionRow(
 
 // A database refusal on save, turned into a message for the right field.
 // null: not about the form (for example no connection).
+// Income added by School money (D-54): the database refuses to change or
+// delete it here, because it records a share there.
+export const SCHOOL_MONEY = "This income was added by School money. Change or undo it on the School money page.";
+
+export function addedBySchoolMoney(message: string): boolean {
+  return /added by School money|(mc_shares|school_handovers|book_orders)_transaction_id_fkey/.test(message);
+}
+
 export function transactionSaveError(code: string | undefined, message: string): TransactionFormErrors | null {
+  if (addedBySchoolMoney(message)) return { amount: SCHOOL_MONEY };
   if (message.includes("account not found") || message.includes("transactions_account_id_fkey")) {
     return { accountId: "Choose an account from the list." };
   }

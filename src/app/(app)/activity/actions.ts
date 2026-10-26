@@ -8,10 +8,12 @@ import { formValues } from "@/lib/form-data";
 import { createClient } from "@/lib/supabase/server";
 import {
   ACCOUNT_NOT_FOUND,
+  addedBySchoolMoney,
   buildTransactionRow,
   lostRecurringLink,
   parseSnapshot,
   parseTransactionForm,
+  SCHOOL_MONEY,
   transactionSaveError,
   type TransactionRow,
   type TransactionSnapshot,
@@ -117,7 +119,8 @@ export async function deleteTransaction(
     .eq("id", id)
     .in("kind", ["expense", "income"])
     .select(SNAPSHOT_COLUMNS);
-  if (error) return { error: CHECK_CONNECTION };
+  // Income added by School money (D-54) is undone there, not here.
+  if (error) return { error: addedBySchoolMoney(error.message) ? SCHOOL_MONEY : CHECK_CONNECTION };
   const snapshot = parseSnapshot(data[0]);
   if (!snapshot) return { error: "This transaction no longer exists." };
 

@@ -6,6 +6,7 @@ import { FormErrorDialog } from "@/components/form-error-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ViewDetails } from "@/components/view-details";
 import { errorList, firstInvalidField } from "@/lib/form-errors";
 
 export type SimpleField = {
@@ -14,6 +15,7 @@ export type SimpleField = {
   type?: "text" | "date" | "month";
   inputMode?: "decimal" | "text";
   placeholder?: string;
+  // An explanation, shown under "View details" (D-53).
   hint?: ReactNode;
   // Text before the value, e.g. "GHS".
   prefix?: string;
@@ -102,11 +104,7 @@ export function SimpleForm({
               className={`h-12 text-base ${field.prefix ? "pl-14 tabular-nums" : ""}`}
             />
           </div>
-          {field.hint ? (
-            <p id={`${field.name}-hint`} className="text-xs text-muted-foreground">
-              {field.hint}
-            </p>
-          ) : null}
+          {field.hint ? <ViewDetails id={`${field.name}-hint`}>{field.hint}</ViewDetails> : null}
           {errors[field.name] ? (
             <p id={`${field.name}-error`} className="sr-only">
               {errors[field.name]}

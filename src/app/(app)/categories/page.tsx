@@ -5,6 +5,7 @@ import { Suspense } from "react";
 
 import { PageHeader } from "@/components/app-shell/page-header";
 import { Button } from "@/components/ui/button";
+import { ViewDetails } from "@/components/view-details";
 import {
   archivedCategories,
   buildCategoryTree,
@@ -88,9 +89,7 @@ async function CategoriesView({ searchParams }: { searchParams: PageProps<"/cate
       {archived.length > 0 ? (
         <section className="flex flex-col gap-2">
           <h2 className="px-1 text-xs font-bold tracking-wide text-muted-foreground uppercase">Archived</h2>
-          <p className="px-1 text-xs text-muted-foreground">
-            Hidden when you add a transaction. Old reports still show them.
-          </p>
+          <ViewDetails className="px-1">Hidden when you add a transaction. Old reports still show them.</ViewDetails>
           <ul className="divide-y overflow-hidden rounded-2xl border bg-card">
             {archived.map((category) => (
               <li key={category.id}>

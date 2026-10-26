@@ -16,6 +16,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { ViewDetails } from "@/components/view-details";
 
 // Pause or resume, skip the next date, delete (screen 7). The actions return
 // an error message, or redirect on success (D-31 pop-up on failure).
@@ -57,11 +58,11 @@ export function RuleActions({
         {paused ? <Play aria-hidden="true" /> : <Pause aria-hidden="true" />}
         {paused ? "Resume" : "Pause"}
       </Button>
-      <p className="text-xs text-muted-foreground">
+      <ViewDetails>
         {paused
           ? "Resuming continues from the next date from today. Dates missed while paused are not added."
           : "Nothing is added while it is paused."}
-      </p>
+      </ViewDetails>
 
       {paused ? null : (
         <>

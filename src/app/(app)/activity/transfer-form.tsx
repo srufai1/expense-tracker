@@ -7,6 +7,7 @@ import { NativeSelect } from "@/components/native-select";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ViewDetails } from "@/components/view-details";
 import { errorList, firstInvalidField } from "@/lib/form-errors";
 import { pickRate, RATE_ATTRIBUTION, rateHint, sameRate, type StoredRate } from "@/lib/fx";
 import { parseAmount, type Currency } from "@/lib/money";
@@ -166,7 +167,8 @@ export function TransferForm({
         <Field
           id="received"
           label="Amount received"
-          hint={implied ?? "Type what arrived, as it really happened."}
+          hint={implied ?? undefined}
+          details={implied ? undefined : "Type what arrived, as it really happened."}
           error={errors.received}
         >
           <MoneyInput
@@ -185,7 +187,7 @@ export function TransferForm({
       <Field
         id="fee"
         label="Fee (optional)"
-        hint="What the sending account charged. It is saved as a Fees & Charges expense."
+        details="What the sending account charged. It is saved as a Fees & Charges expense."
         error={errors.fee}
       >
         <MoneyInput id="fee" currency={fromCurrency} defaultValue={start.fee} invalid={Boolean(errors.fee)} hasHint />
@@ -263,12 +265,15 @@ function Field({
   id,
   label,
   hint,
+  details,
   error,
   children,
 }: {
   id: string;
   label: string;
   hint?: ReactNode;
+  // An explanation, shown under "View details" (D-53).
+  details?: ReactNode;
   error?: string;
   children: ReactNode;
 }) {
@@ -281,6 +286,7 @@ function Field({
           {hint}
         </p>
       ) : null}
+      {details ? <ViewDetails id={`${id}-hint`}>{details}</ViewDetails> : null}
       {error ? (
         <p id={`${id}-error`} className="sr-only">
           {error}

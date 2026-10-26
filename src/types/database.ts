@@ -296,10 +296,276 @@ export type Database = {
         Update: { rate?: number | string; source?: string; fetched_at?: string };
         Relationships: [];
       };
+      // School money (D-54 – D-56). Only the columns the app may write
+      // are in Insert/Update (see the GRANTs in the migrations).
+      school_settings: {
+        Row: {
+          user_id: string;
+          account_id: string;
+          income_category_id: string;
+          book_transport_minor: number;
+          book_mine_minor: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: { account_id: string; income_category_id: string };
+        Update: { account_id?: string; income_category_id?: string; book_transport_minor?: number; book_mine_minor?: number };
+        Relationships: [];
+      };
+      mc_sharers: {
+        Row: { id: string; user_id: string; name: string; is_me: boolean; archived_at: string | null; created_at: string };
+        Insert: { name: string; is_me?: boolean };
+        Update: { name?: string; archived_at?: string | null };
+        Relationships: [];
+      };
+      mc_days: {
+        Row: {
+          id: string;
+          user_id: string;
+          day: string;
+          account_id: string;
+          no_class: boolean;
+          reason: "holiday" | "exams" | "other" | null;
+          note: string;
+          full_1: number;
+          full_2: number;
+          full_3: number;
+          less_1_minor: number;
+          less_2_minor: number;
+          less_3_minor: number;
+          fee_minor: number;
+          school_minor: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          day: string;
+          no_class?: boolean;
+          reason?: "holiday" | "exams" | "other" | null;
+          note?: string;
+          full_1?: number;
+          full_2?: number;
+          full_3?: number;
+          less_1_minor?: number;
+          less_2_minor?: number;
+          less_3_minor?: number;
+        };
+        Update: {
+          no_class?: boolean;
+          reason?: "holiday" | "exams" | "other" | null;
+          note?: string;
+          full_1?: number;
+          full_2?: number;
+          full_3?: number;
+          less_1_minor?: number;
+          less_2_minor?: number;
+          less_3_minor?: number;
+        };
+        Relationships: [];
+      };
+      mc_weeks: {
+        Row: {
+          id: string;
+          user_id: string;
+          week_start: string;
+          settled_on: string;
+          account_id: string;
+          class_days: number;
+          collected_minor: number;
+          school_minor: number;
+          savings_rule: "all" | "half" | "none";
+          savings_day: string | null;
+          savings_minor: number;
+          leftover_minor: number;
+          markers_minor: number;
+          assistant_minor: number;
+          each_minor: number;
+          created_at: string;
+        };
+        // Written only by mc_settle().
+        Insert: Record<string, never>;
+        Update: Record<string, never>;
+        Relationships: [];
+      };
+      mc_shares: {
+        Row: {
+          id: string;
+          user_id: string;
+          week_id: string;
+          sharer_id: string | null;
+          name: string;
+          is_me: boolean;
+          amount_minor: number;
+          paid_on: string | null;
+          transaction_id: string | null;
+        };
+        Insert: Record<string, never>;
+        Update: { paid_on?: string | null };
+        Relationships: [];
+      };
+      school_fund_spends: {
+        Row: {
+          id: string;
+          user_id: string;
+          fund: "morning" | "books";
+          account_id: string;
+          amount_minor: number;
+          spent_on: string;
+          purpose: "sports" | "science_fair" | "teacher_books" | "other";
+          note: string;
+          created_at: string;
+        };
+        Insert: {
+          fund: "morning" | "books";
+          amount_minor: number;
+          spent_on: string;
+          purpose: "sports" | "science_fair" | "teacher_books" | "other";
+          note?: string;
+        };
+        Update: Record<string, never>;
+        Relationships: [];
+      };
+      school_students: {
+        Row: { id: string; user_id: string; name: string; class_name: string; archived_at: string | null; created_at: string };
+        Insert: { name: string; class_name?: string };
+        Update: { name?: string; class_name?: string; archived_at?: string | null };
+        Relationships: [];
+      };
+      school_fees: {
+        Row: {
+          id: string;
+          user_id: string;
+          name: string;
+          amount_minor: number;
+          archived_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: { name: string; amount_minor: number };
+        Update: { name?: string; amount_minor?: number; archived_at?: string | null };
+        Relationships: [];
+      };
+      school_fee_students: {
+        Row: { id: string; user_id: string; fee_id: string; student_id: string; payable_minor: number };
+        Insert: { fee_id: string; student_id: string; payable_minor: number };
+        Update: { payable_minor?: number };
+        Relationships: [];
+      };
+      school_fee_payments: {
+        Row: {
+          id: string;
+          user_id: string;
+          fee_student_id: string;
+          account_id: string;
+          amount_minor: number;
+          paid_on: string;
+          note: string;
+          created_at: string;
+        };
+        Insert: { fee_student_id: string; amount_minor: number; paid_on: string; note?: string };
+        Update: Record<string, never>;
+        Relationships: [];
+      };
+      school_handovers: {
+        Row: {
+          id: string;
+          user_id: string;
+          fee_id: string;
+          account_id: string;
+          to_whom: "headmaster" | "headmistress" | "headteacher_academics" | "bursar" | "myself";
+          amount_minor: number;
+          handed_on: string;
+          note: string;
+          transaction_id: string | null;
+          created_at: string;
+        };
+        // Written only by school_hand_over().
+        Insert: Record<string, never>;
+        Update: Record<string, never>;
+        Relationships: [];
+      };
+      book_subjects: {
+        Row: {
+          id: string;
+          user_id: string;
+          name: string;
+          price_minor: number;
+          archived_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: { name: string; price_minor: number };
+        Update: { name?: string; price_minor?: number; archived_at?: string | null };
+        Relationships: [];
+      };
+      book_purchases: {
+        Row: {
+          id: string;
+          user_id: string;
+          subject_id: string;
+          account_id: string;
+          quantity: number;
+          amount_minor: number;
+          bought_on: string;
+          note: string;
+          created_at: string;
+        };
+        Insert: { subject_id: string; quantity: number; amount_minor: number; bought_on: string; note?: string };
+        Update: Record<string, never>;
+        Relationships: [];
+      };
+      book_orders: {
+        Row: {
+          id: string;
+          user_id: string;
+          student_id: string;
+          subject_id: string;
+          price_minor: number;
+          given_on: string | null;
+          given_seq: number | null;
+          account_id: string | null;
+          cost_minor: number | null;
+          transport_minor: number | null;
+          mine_minor: number | null;
+          teachers_minor: number | null;
+          transaction_id: string | null;
+          created_at: string;
+        };
+        Insert: { student_id: string; subject_id: string; price_minor: number };
+        Update: Record<string, never>;
+        Relationships: [];
+      };
+      book_payments: {
+        Row: {
+          id: string;
+          user_id: string;
+          student_id: string;
+          account_id: string;
+          amount_minor: number;
+          paid_on: string;
+          note: string;
+          created_at: string;
+        };
+        Insert: { student_id: string; amount_minor: number; paid_on: string; note?: string };
+        Update: Record<string, never>;
+        Relationships: [];
+      };
     };
     Views: {
       account_balances: {
         Row: { account_id: string; balance_minor: number; has_transactions: boolean };
+        Relationships: [];
+      };
+      // Every movement of school money, in (+) or out (−) of an account (D-54).
+      school_cash_moves: {
+        Row: {
+          user_id: string;
+          account_id: string;
+          occurred_on: string;
+          source: "morning" | "fund_morning" | "fund_books" | "fee" | "books";
+          ref_id: string | null;
+          amount_minor: number;
+        };
         Relationships: [];
       };
     };
@@ -337,6 +603,35 @@ export type Database = {
       auth_attempt_lock: { Args: { p_kind: AttemptKind; p_subject: string | null }; Returns: string | null };
       auth_attempt_failed: { Args: { p_kind: AttemptKind; p_subject: string | null }; Returns: string | null };
       auth_attempt_cleared: { Args: { p_kind: "sign-in" | "password" }; Returns: undefined };
+      // School money (D-54 – D-56).
+      mc_settle: {
+        Args: {
+          p_week_start: string;
+          p_settled_on: string;
+          p_savings_rule: "all" | "half" | "none";
+          p_savings_day: string | null;
+          p_savings_minor: number;
+          p_leftover_minor: number;
+          p_markers_minor: number;
+          p_assistant_minor: number;
+          p_each_minor: number;
+          p_sharer_ids: string[];
+        };
+        Returns: string;
+      };
+      mc_unsettle: { Args: { p_week_id: string }; Returns: undefined };
+      school_hand_over: {
+        Args: { p_fee_id: string; p_to_whom: string; p_amount_minor: number; p_handed_on: string; p_note: string };
+        Returns: string;
+      };
+      school_undo_handover: { Args: { p_id: string }; Returns: undefined };
+      books_give_out: { Args: { p_order_ids: string[]; p_given_on: string }; Returns: undefined };
+      books_undo_give: { Args: { p_order_id: string }; Returns: undefined };
+      // What is held for the school, added up per source and fee.
+      school_held_by_source: {
+        Args: Record<string, never>;
+        Returns: { source: "morning" | "fund_morning" | "fund_books" | "fee" | "books"; ref_id: string | null; amount_minor: number }[];
+      };
     };
     Enums: { [_ in never]: never };
     CompositeTypes: { [_ in never]: never };
