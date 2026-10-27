@@ -11,7 +11,7 @@ import { formatRateDate } from "@/lib/fx";
 
 import { getRateFor } from "../activity/rates";
 import { AccountTypeIcon } from "./account-type-icon";
-import { getAccounts, type Account } from "./data";
+import { getAccounts, getSchoolHeldByAccount, type Account } from "./data";
 import { MoneyText } from "./money-text";
 
 export const metadata: Metadata = { title: "Accounts" };
@@ -48,7 +48,7 @@ export default function AccountsPage() {
 }
 
 async function AccountsList() {
-  const accounts = await getAccounts();
+  const [accounts, held] = await Promise.all([getAccounts(), getSchoolHeldByAccount()]);
   const active = accounts.filter((account) => !account.archived);
   const archived = accounts.filter((account) => account.archived);
 
@@ -74,7 +74,7 @@ async function AccountsList() {
   return (
     <>
       <section className="flex flex-col gap-1 px-1" aria-label="Totals">
-        <span className="text-xs font-bold tracking-wide text-muted-foreground uppercase">Total in GHS</span>
+        <span className="text-xs font-bold tracking-wide text-muted-foreground uppercase">Total in GHS (includes school funds)</span>
         <MoneyText minor={total.ghsMinor} currency="GHS" className="text-3xl font-extrabold tracking-tight" />
         {hasUsd ? (
           <span className="text-sm text-muted-foreground">
@@ -93,19 +93,19 @@ async function AccountsList() {
         ) : null}
       </section>
 
-      <AccountList accounts={active} />
+      <AccountList accounts={active} held={held} />
 
       {archived.length > 0 ? (
         <section className="flex flex-col gap-2">
           <h2 className="px-1 text-xs font-bold tracking-wide text-muted-foreground uppercase">Archived</h2>
-          <AccountList accounts={archived} muted />
+          <AccountList accounts={archived} held={held} muted />
         </section>
       ) : null}
     </>
   );
 }
 
-function AccountList({ accounts, muted = false }: { accounts: Account[]; muted?: boolean }) {
+function AccountList({ accounts, held, muted = false }: { accounts: Account[]; held: Map<string, number>; muted?: boolean }) {
   return (
     <ul className="divide-y overflow-hidden rounded-2xl border bg-card">
       {accounts.map((account) => (
@@ -125,7 +125,13 @@ function AccountList({ accounts, muted = false }: { accounts: Account[]; muted?:
                 {accountTypeLabel(account.type)} · {account.currency}
               </span>
             </span>
-            <MoneyText minor={account.balanceMinor} currency={account.currency} className="font-bold" />
+            <span className="flex max-w-[55%] flex-col items-end text-right">
+              <MoneyText minor={account.balanceMinor} currency={account.currency} className="font-bold" />
+              {(held.get(account.id) ?? 0) !== 0 ? <>
+                <span className="text-xs text-muted-foreground">School: <MoneyText minor={held.get(account.id)!} currency={account.currency} /></span>
+                <span className="text-xs">Yours: <MoneyText minor={account.balanceMinor - held.get(account.id)!} currency={account.currency} /></span>
+              </> : null}
+            </span>
             <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
           </Link>
         </li>

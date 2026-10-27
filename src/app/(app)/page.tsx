@@ -107,7 +107,7 @@ async function BalanceCard() {
         </span>
 
         <span className="flex flex-col gap-1">
-          <span className="text-xs font-semibold tracking-wide uppercase opacity-80">Total balance</span>
+          <span className="text-xs font-semibold tracking-wide uppercase opacity-80">Total incl. school money</span>
           <MoneyText minor={total.ghsMinor} currency="GHS" className="text-3xl font-extrabold tracking-tight text-white" />
           {/* USD is shown separately only when no rate is stored to convert it (D-37). */}
           {hasUsd && !total.usdConverted ? (
@@ -142,7 +142,7 @@ async function SchoolMoneyCard() {
     >
       <span className="flex items-center gap-2 text-sm font-semibold">
         <School className="size-4 text-primary" aria-hidden="true" />
-        Holding for the school
+        <span>Holding for the school<span className="block text-xs font-normal text-muted-foreground">Included in its account’s balance</span></span>
       </span>
       <span className="flex items-center gap-1">
         <MoneyText minor={held} currency="GHS" className="font-bold whitespace-nowrap" />

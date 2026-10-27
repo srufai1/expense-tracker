@@ -2,6 +2,7 @@ import "server-only";
 
 import type { AccountType } from "@/lib/accounts";
 import { requireUser } from "@/lib/auth";
+import { fetchAllPages } from "@/lib/pages";
 import type { Currency } from "@/lib/money";
 import { createClient } from "@/lib/supabase/server";
 
@@ -86,4 +87,17 @@ export async function getAccount(id: string): Promise<Account | null> {
   if (!data) return null;
   const balances = await getBalances(supabase, data.id);
   return toAccount(data, balances.get(data.id));
+}
+
+// Includes all school dates: this is what is still held, not just the
+// change since an account's opening date. RLS applies to the source view.
+export async function getSchoolHeldByAccount(): Promise<Map<string, number>> {
+  await requireUser();
+  const supabase = await createClient();
+  const rows = await fetchAllPages((from, to) => supabase.from("school_cash_moves")
+    .select("account_id, occurred_on, source, ref_id, amount_minor")
+    .order("account_id").order("occurred_on").order("source").order("ref_id").order("amount_minor").range(from, to));
+  const held = new Map<string, number>();
+  for (const row of rows) held.set(row.account_id, (held.get(row.account_id) ?? 0) + row.amount_minor);
+  return held;
 }
