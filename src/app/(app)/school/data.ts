@@ -54,19 +54,6 @@ export async function getSchoolSettings(): Promise<SchoolSettings | null> {
   };
 }
 
-// The accounts school money can be kept in: active GHS accounts, cash first.
-export async function getGhsAccounts(): Promise<{ id: string; name: string }[]> {
-  const supabase = await client();
-  const { data, error } = await supabase
-    .from("accounts")
-    .select("id, name, type")
-    .eq("currency", "GHS")
-    .is("archived_at", null)
-    .order("created_at");
-  if (error) fail("accounts", error);
-  return [...data].sort((a, b) => Number(b.type === "cash") - Number(a.type === "cash")).map(({ id, name }) => ({ id, name }));
-}
-
 export type Held = {
   totalMinor: number;
   morningMinor: number;
@@ -115,7 +102,7 @@ async function everyRow<T>(
 
 // --- Morning classes -----------------------------------------------------
 
-export type DayRecord = MorningDay & { reason: NoClassReason | null; note: string };
+export type DayRecord = MorningDay & { updatedAt: string; reason: NoClassReason | null; note: string };
 
 export type WeekRecord = {
   id: string;
@@ -136,10 +123,11 @@ export type WeekRecord = {
 export type Sharer = { id: string; name: string; isMe: boolean; archived: boolean };
 
 const DAY_COLUMNS =
-  "day, no_class, reason, note, full_1, full_2, full_3, less_1_minor, less_2_minor, less_3_minor, fee_minor, school_minor";
+  "day, updated_at, no_class, reason, note, full_1, full_2, full_3, less_1_minor, less_2_minor, less_3_minor, fee_minor, school_minor";
 
 type DayRow = {
   day: string;
+  updated_at: string;
   no_class: boolean;
   reason: NoClassReason | null;
   note: string;
@@ -156,6 +144,7 @@ type DayRow = {
 function toDay(row: DayRow): DayRecord {
   return {
     date: row.day,
+    updatedAt: row.updated_at,
     noClass: row.no_class,
     reason: row.reason,
     note: row.note,

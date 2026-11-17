@@ -78,6 +78,10 @@ async function Week({ searchParams }: { searchParams: PageProps<"/school/morning
         </Button>
       </nav>
 
+      <Button asChild variant="outline" className="h-11">
+        <a href={`/api/school-report.pdf?week=${monday}`} target="_blank" rel="noopener noreferrer">Weekly report (PDF)</a>
+      </Button>
+
       <Panel label="Days">
         <div className="grid grid-cols-5 gap-1.5">
           {dates.map((date, i) => {

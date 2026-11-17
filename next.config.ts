@@ -9,6 +9,9 @@ const nextConfig: NextConfig = {
   async headers() {
     return [{ source: "/:path*", headers: [...SECURITY_HEADERS] }];
   },
+  async redirects() {
+    return [{ source: "/accounts/:path*", destination: "/", permanent: false }];
+  },
   partialPrefetching: true,
   turbopack: {
     rules: {

@@ -21,13 +21,14 @@ export const metadata: Metadata = { title: "Morning classes" };
 export default function MorningDayPage(props: PageProps<"/school/morning/[date]">) {
   return (
     <Suspense fallback={<div className="h-96 rounded-2xl bg-muted" aria-hidden="true" />}>
-      <Day params={props.params} />
+      <Day params={props.params} searchParams={props.searchParams} />
     </Suspense>
   );
 }
 
-async function Day({ params }: { params: PageProps<"/school/morning/[date]">["params"] }) {
-  const { date } = await params;
+type Props = PageProps<"/school/morning/[date]">;
+async function Day({ params, searchParams }: Pick<Props, "params" | "searchParams">) {
+  const [{ date }, { saved }] = await Promise.all([params, searchParams]);
   if (!isIsoDate(date) || !isWeekday(date)) notFound();
   // The session first: it marks the page as per-request before the clock is read.
   await requireUser();
@@ -62,10 +63,11 @@ async function Day({ params }: { params: PageProps<"/school/morning/[date]">["pa
       <PageHeader title={title} backHref={back} />
       {date <= today ? (
         <>
-          <MorningDayForm key={day?.noClass ? "was-no-class" : "class"} action={saveMorningDay} day={day?.noClass ? { ...start, noClass: false } : start} />
+          {saved === "1" ? <p role="status" className="text-sm font-semibold text-primary">Collections saved.</p> : null}
+          <MorningDayForm key={`${date}:${day?.updatedAt ?? "new"}`} action={saveMorningDay.bind(null, day?.updatedAt ?? null)} day={day?.noClass ? { ...start, noClass: false } : start} />
           <ViewDetails>
-            Count only students who paid the full GHS 3.00 with + and −. Money from students who paid less goes in the
-            box under each class. The school gets 0.50 for each full payer only.
+            Enter each class’s total for the day. Every full GHS 3.00 counts as one payment for sharing.
+            Any remainder stays in the collection total.
           </ViewDetails>
         </>
       ) : null}

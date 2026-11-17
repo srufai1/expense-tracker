@@ -49,7 +49,7 @@ async function EditTransaction({ params }: { params: PageProps<"/activity/[id]">
         action={updateTransaction.bind(null, transaction.id)}
         submitLabel="Save changes"
         categories={choices.categories}
-        accounts={choices.accounts}
+        accounts={choices.accounts.filter((account) => account.id === transaction.accountId)}
         rates={choices.rates}
         // Keep the stored rate and account amount (M-2) unless changed.
         keepTyped

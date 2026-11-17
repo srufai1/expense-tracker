@@ -126,7 +126,7 @@ export function RecurringForm({
         focusSelector={firstWrong ? FOCUS[firstWrong] : null}
       />
 
-      <Segmented legend="Type" name="kind" options={RULE_KINDS} value={kind} onChange={setKind} label={(k) => KIND_LABEL[k]} />
+      <Segmented legend="Type" name="kind" options={initial.kind === "transfer" ? RULE_KINDS : RULE_KINDS.filter((option) => option !== "transfer")} value={kind} onChange={setKind} label={(k) => KIND_LABEL[k]} />
 
       <Field id="amount" label="Amount" error={errors.amount}>
         <div className="flex gap-2">
@@ -160,7 +160,7 @@ export function RecurringForm({
         <Field
           id="goalId"
           label="Goal"
-          details="The money stays in its account: this only adds to the goal's progress."
+          details="This adds to the goal’s progress."
           error={errors.goalId}
         >
           <NativeSelect
@@ -200,7 +200,7 @@ export function RecurringForm({
         </Field>
       )}
 
-      {goal ? null : (
+      {goal ? null : accounts.length === 1 ? <input type="hidden" name="accountId" value={accountId} /> : (
         <Field
           id="accountId"
           label={transfer ? "From account" : kind === "income" ? "Into account" : "From account"}

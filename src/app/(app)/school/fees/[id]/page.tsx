@@ -91,6 +91,10 @@ async function Fee({
         </Button>
       </div>
 
+      <Button asChild variant="outline" className="h-11">
+        <a href={`/api/school-report.pdf?fee=${fee.id}`} target="_blank" rel="noopener noreferrer">Payment statement (PDF)</a>
+      </Button>
+
       <FilterLinks
         base={base}
         current={show}

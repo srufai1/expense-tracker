@@ -1,4 +1,4 @@
-import { ChevronRight, Download, Landmark, Repeat, School, Settings, Tags, Target } from "lucide-react";
+import { ChevronRight, Download, Repeat, School, Settings, Tags, Target } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 
@@ -14,18 +14,8 @@ export default function MorePage() {
 
       <nav aria-label="Money" className="overflow-hidden rounded-2xl border bg-card">
         <Link
-          href="/accounts"
-          className="flex min-h-13 items-center gap-3 px-4 py-3 font-semibold hover:bg-muted/50 focus-visible:bg-muted focus-visible:outline-none"
-        >
-          <span className="flex size-8 items-center justify-center rounded-lg bg-accent text-accent-foreground">
-            <Landmark className="size-4" aria-hidden="true" />
-          </span>
-          <span className="flex-1">Accounts</span>
-          <ChevronRight className="size-4 text-muted-foreground" aria-hidden="true" />
-        </Link>
-        <Link
           href="/categories"
-          className="flex min-h-13 items-center gap-3 border-t px-4 py-3 font-semibold hover:bg-muted/50 focus-visible:bg-muted focus-visible:outline-none"
+          className="flex min-h-13 items-center gap-3 px-4 py-3 font-semibold hover:bg-muted/50 focus-visible:bg-muted focus-visible:outline-none"
         >
           <span className="flex size-8 items-center justify-center rounded-lg bg-accent text-accent-foreground">
             <Tags className="size-4" aria-hidden="true" />
@@ -90,7 +80,7 @@ export default function MorePage() {
           <span className="flex-1">Export everything (Excel)</span>
         </a>
         <ViewDetails className="px-1">
-          Accounts, transactions, budgets, goals, recurring items and School money. Keep a copy each month.
+          Transactions, budgets, savings goals, recurring items and School money. Keep a copy each month.
         </ViewDetails>
       </section>
     </>

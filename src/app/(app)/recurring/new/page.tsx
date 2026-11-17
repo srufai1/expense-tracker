@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/app-shell/page-header";
 import { todayInAccra } from "@/lib/dates";
 import { goalChoices } from "@/lib/goals";
 
+import { LEDGER_CHOICE } from "../../activity/ledger-choice";
 import { getFormChoices } from "../../activity/form-choices";
 import { getGoalNames } from "../../goals/data";
 import { saveRule } from "../actions";
@@ -36,7 +37,7 @@ async function NewRule({ searchParams }: { searchParams: PageProps<"/recurring/n
       action={saveRule.bind(null, null)}
       submitLabel="Save recurring item"
       categories={choices.categories}
-      accounts={choices.accounts}
+      accounts={[LEDGER_CHOICE]}
       goals={goals}
       initial={{
         kind: startGoal ? "goal_contribution" : "expense",
@@ -44,7 +45,7 @@ async function NewRule({ searchParams }: { searchParams: PageProps<"/recurring/n
         currency: "GHS",
         categoryId: "",
         goalId: startGoal,
-        accountId: choices.accounts.length === 1 ? choices.accounts[0].id : "",
+        accountId: LEDGER_CHOICE.id,
         toAccountId: "",
         frequency: "monthly",
         weekday: "1",

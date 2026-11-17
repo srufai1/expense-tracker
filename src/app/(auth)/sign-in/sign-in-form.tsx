@@ -31,7 +31,7 @@ export function SignInForm() {
       <input type="hidden" name="next" value={next} />
       {reason === "idle" ? (
         <p role="status" className="rounded-xl bg-accent p-3 text-sm text-accent-foreground">
-          You were signed out after 20 minutes without activity, to keep your money private. Sign in again to go on.
+          You were signed out after two hours without activity, to keep your money private. Sign in again to go on.
         </p>
       ) : reason === "deleted" ? (
         <p role="status" className="rounded-xl bg-accent p-3 text-sm text-accent-foreground">

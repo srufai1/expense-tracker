@@ -22,10 +22,18 @@ const ID = "11111111-1111-4111-8111-111111111111";
 const ID2 = "22222222-2222-4222-8222-222222222222";
 
 describe("parseMorningDayForm", () => {
-  it("reads the full payers and the money from those who paid less, per class", () => {
+  it("converts class totals into full payments and a remainder", () => {
     expect(
-      parseMorningDayForm({ date: "2026-10-22", full1: "13", less1: "", full2: "12", less2: "4.00", full3: "12", less3: "0" }, TODAY),
-    ).toEqual({ ok: true, value: { date: "2026-10-22", full: [13, 12, 12], lessMinor: [0, 400, 0] } });
+      parseMorningDayForm({ date: "2026-10-22", amount1: "39", amount2: "83.00", amount3: "36" }, TODAY),
+    ).toEqual({ ok: true, value: { date: "2026-10-22", full: [13, 27, 12], lessMinor: [0, 200, 0] } });
+  });
+
+  it("keeps the saved breakdown for an unchanged class when another class receives money", () => {
+    const date = "2026-10-22";
+    expect(parseMorningDayForm({ date, amount1: "40", amount2: "83" }, TODAY, {
+      date, noClass: false, feeMinor: 300, schoolMinor: 50,
+      full: [12, 0, 0], lessMinor: [400, 0, 0],
+    })).toEqual({ ok: true, value: { date, full: [12, 27, 0], lessMinor: [400, 200, 0] } });
   });
 
   it("treats empty boxes as 0", () => {
@@ -33,7 +41,7 @@ describe("parseMorningDayForm", () => {
     expect(result).toEqual({ ok: true, value: { date: "2026-10-22", full: [0, 0, 0], lessMinor: [0, 0, 0] } });
   });
 
-  it("refuses weekends, future days, bad counts and bad amounts", () => {
+  it("refuses weekends, future days, invalid and excessive amounts", () => {
     expect(parseMorningDayForm({ date: "2026-10-24" }, TODAY)).toEqual({
       ok: false,
       errors: { date: "Morning classes are Monday to Friday." },
@@ -42,11 +50,11 @@ describe("parseMorningDayForm", () => {
       ok: false,
       errors: { date: "The date cannot be in the future." },
     });
-    expect(parseMorningDayForm({ date: "2026-10-22", full1: "2.5", less2: "abc" }, TODAY)).toEqual({
+    expect(parseMorningDayForm({ date: "2026-10-22", amount1: "1.234", amount2: "abc" }, TODAY)).toEqual({
       ok: false,
-      errors: { full1: "Enter a number of students, 0 to 500.", less2: "Enter an amount, for example 12.50." },
+      errors: { amount1: "Use at most 2 decimal places.", amount2: "Enter an amount, for example 12.50." },
     });
-    expect(parseMorningDayForm({ date: "2026-10-22", full3: "501" }, TODAY)).toMatchObject({ ok: false });
+    expect(parseMorningDayForm({ date: "2026-10-22", amount3: "1503" }, TODAY)).toMatchObject({ ok: false });
   });
 });
 

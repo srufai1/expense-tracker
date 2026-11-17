@@ -11,7 +11,7 @@ export default function AppLayout({ children }: LayoutProps<"/">) {
         {children}
       </main>
       <BottomNav />
-      {/* Signs out after 20 minutes without activity (D-49). */}
+      {/* Signs out after two hours without activity (D-49). */}
       <IdleSignOut />
     </>
   );

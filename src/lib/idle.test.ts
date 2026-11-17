@@ -5,17 +5,17 @@ import { IDLE_LIMIT_MS, idleCheck } from "./idle";
 const NOW = 1_800_000_000_000;
 
 describe("idleCheck (D-49)", () => {
-  it("is 20 minutes", () => {
-    expect(IDLE_LIMIT_MS).toBe(20 * 60 * 1000);
+  it("is two hours", () => {
+    expect(IDLE_LIMIT_MS).toBe(120 * 60 * 1000);
   });
 
-  it("keeps a signed-in visitor who was active in the last 20 minutes, and notes this visit", () => {
-    expect(idleCheck({ signedIn: true, lastActive: String(NOW - 19 * 60_000), now: NOW })).toBe("touch");
+  it("keeps a signed-in visitor who was active in the last two hours, and notes this visit", () => {
+    expect(idleCheck({ signedIn: true, lastActive: String(NOW - 119 * 60_000), now: NOW })).toBe("touch");
     expect(idleCheck({ signedIn: true, lastActive: String(NOW), now: NOW })).toBe("touch");
   });
 
-  it("signs out a visitor idle for 20 minutes or more", () => {
-    expect(idleCheck({ signedIn: true, lastActive: String(NOW - 20 * 60_000), now: NOW })).toBe("sign-out");
+  it("signs out a visitor idle for two hours or more", () => {
+    expect(idleCheck({ signedIn: true, lastActive: String(NOW - 120 * 60_000), now: NOW })).toBe("sign-out");
     expect(idleCheck({ signedIn: true, lastActive: String(NOW - 3 * 86_400_000), now: NOW })).toBe("sign-out");
   });
 

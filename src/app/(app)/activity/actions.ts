@@ -19,6 +19,8 @@ import {
   type TransactionSnapshot,
 } from "@/lib/transactions";
 
+import { getOrCreateLedger } from "../accounts/ledger";
+import { LEDGER_CHOICE } from "./ledger-choice";
 import type { TransactionFormState } from "./form-state";
 import { getRateFor } from "./rates";
 
@@ -40,11 +42,19 @@ function failure(error: { code?: string; message: string }, values: Record<strin
 async function prepareRow(
   supabase: Awaited<ReturnType<typeof createClient>>,
   formData: FormData,
+  newEntry = false,
 ): Promise<{ row: TransactionRow } | { state: TransactionFormState }> {
   const values = formValues(formData);
+  if (newEntry) values.accountId = LEDGER_CHOICE.id;
   const parsed = parseTransactionForm(values);
   if (!parsed.ok) return { state: { errors: parsed.errors, values } };
 
+  if (newEntry) {
+    const { data, error } = await getOrCreateLedger(supabase);
+    if (error || !data) return { state: { errors: {}, formError: CHECK_CONNECTION, values } };
+    const built = buildTransactionRow({ ...parsed.value, accountId: data.id }, LEDGER_CHOICE.currency, await getRateFor(parsed.value.occurredOn));
+    return built.ok ? { row: built.row } : { state: { errors: built.errors, values } };
+  }
   const { data: account, error } = await supabase
     .from("accounts")
     .select("currency")
@@ -71,7 +81,7 @@ export async function createTransaction(
 ): Promise<TransactionFormState> {
   await requireUser();
   const supabase = await createClient();
-  const prepared = await prepareRow(supabase, formData);
+  const prepared = await prepareRow(supabase, formData, true);
   if ("state" in prepared) return prepared.state;
 
   const { error } = await supabase.from("transactions").insert(prepared.row);

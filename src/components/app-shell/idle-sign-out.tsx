@@ -5,7 +5,7 @@ import { useEffect } from "react";
 import { keepAlive, signOutIdle } from "@/app/(app)/actions";
 import { IDLE_LIMIT_MS } from "@/lib/idle";
 
-// Signs out after 20 minutes without a tap, key press or scroll (D-49).
+// Signs out after two hours without a tap, key press or scroll (D-49).
 // While someone is active, it makes a small request every 5 minutes, so the
 // server's idle clock (the proxy) knows; a long form is never lost to it.
 // When the phone wakes a sleeping app, it checks how long it was away.

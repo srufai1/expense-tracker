@@ -7,11 +7,11 @@ import { PageHeader } from "@/components/app-shell/page-header";
 import { Button } from "@/components/ui/button";
 import { ViewDetails } from "@/components/view-details";
 import { todayInAccra } from "@/lib/dates";
-import { mondayOf, schoolWeekDays } from "@/lib/school/week";
+import { isWeekday, mondayOf, schoolWeekDays } from "@/lib/school/week";
 import { dayTotals } from "@/lib/school/morning";
 
-import { getFees, getFundBalances, getGhsAccounts, getHeld, getMorningWeek, getSchoolSettings, getUnpaidShares } from "./data";
-import { SetupForm } from "./forms";
+import { getFees, getFundBalances, getHeld, getMorningWeek, getSchoolSettings, getUnpaidShares } from "./data";
+import { ActionButton } from "./action-button";
 import { setUpSchoolMoney } from "./morning-actions";
 import { ghs, LinkRow, Pill, SectionTitle } from "./ui";
 
@@ -42,7 +42,7 @@ async function School() {
     getMorningWeek(monday, schoolWeekDays(monday)[4]),
     getUnpaidShares(),
   ]);
-  const thisWeekMinor = week.week ? 0 : week.days.reduce((total, day) => total + dayTotals(day).collectedMinor, 0);
+  const thisWeekMinor = week.week?.collectedMinor ?? week.days.reduce((total, day) => total + dayTotals(day).collectedMinor, 0);
   const activeFees = fees.filter((fee) => !fee.archived);
 
   return (
@@ -53,15 +53,17 @@ async function School() {
       >
         <span className="text-sm font-semibold opacity-85">Holding for the school</span>
         <span className="text-3xl font-extrabold tracking-tight tabular-nums">{ghs(held.totalMinor)}</span>
-        <span className="text-xs opacity-85">In {settings.accountName} · not your money</span>
       </section>
-      <ViewDetails>
-        School money is counted in {settings.accountName}&apos;s balance, but never as your income or spending. Only
-        your own share becomes income (category: School money).{" "}
-        <Link href="/school/setup" className="font-semibold underline">
-          Change the account
-        </Link>
-      </ViewDetails>
+      <div className="grid grid-cols-2 gap-2">
+        <Button asChild className="h-11">
+          <Link href={isWeekday(today) && !week.week ? `/school/morning/${today}` : "/school/morning"}>
+            Record collections
+          </Link>
+        </Button>
+        <Button asChild variant="outline" className="h-11">
+          <Link href="/school/fees/new"><Plus aria-hidden="true" /> New fee</Link>
+        </Button>
+      </div>
 
       <div className="overflow-hidden rounded-2xl border bg-card">
         <LinkRow
@@ -71,7 +73,7 @@ async function School() {
               <Sun className="size-4 text-amber-500" aria-hidden="true" /> Morning classes
             </span>
           }
-          detail={week.week ? "This week is settled" : `This week so far`}
+          detail={week.week ? "This week is settled" : "This week so far"}
           right={
             <>
               <span className="font-bold tabular-nums">{ghs(thisWeekMinor)}</span>
@@ -100,7 +102,7 @@ async function School() {
                   right={
                     <>
                       <span className="font-bold tabular-nums">{ghs(holding)}</span>
-                      {holding === 0 ? <Pill tone="ok">all handed over</Pill> : <Pill tone="plain">holding</Pill>}
+                      {holding === 0 ? <Pill tone="plain">nothing held</Pill> : <Pill tone="plain">holding</Pill>}
                     </>
                   }
                 />
@@ -109,12 +111,6 @@ async function School() {
           })
         )}
       </div>
-      <Button asChild variant="outline" className="h-11">
-        <Link href="/school/fees/new">
-          <Plus aria-hidden="true" /> New fee
-        </Link>
-      </Button>
-
       <SectionTitle>Books</SectionTitle>
       <div className="overflow-hidden rounded-2xl border bg-card">
         <LinkRow
@@ -155,23 +151,12 @@ async function School() {
   );
 }
 
-async function SetUp() {
-  const accounts = await getGhsAccounts();
+function SetUp() {
   return (
     <section className="flex flex-col gap-4 rounded-2xl border bg-card p-5">
       <h2 className="text-lg font-bold">Set up School money</h2>
-      <p className="text-sm text-muted-foreground">Choose where you keep the money you collect for the school.</p>
-      {accounts.length === 0 ? (
-        <Button asChild className="h-11">
-          <Link href="/accounts/new">Add a GHS account first</Link>
-        </Button>
-      ) : (
-        <SetupForm action={setUpSchoolMoney} accounts={accounts} />
-      )}
-      <ViewDetails>
-        The money stays in that account&apos;s balance but is not counted as your income. Your own share is added as
-        income in a new &quot;School money&quot; category.
-      </ViewDetails>
+      <p className="text-sm text-muted-foreground">Track fees, morning classes and book payments. Your share is recorded as personal income.</p>
+      <ActionButton action={setUpSchoolMoney}>Set up School money</ActionButton>
     </section>
   );
 }

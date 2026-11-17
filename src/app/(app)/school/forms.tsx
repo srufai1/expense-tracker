@@ -35,10 +35,11 @@ import {
   parseSharerForm,
   parseStudentsForm,
   parseSubjectForm,
+  splitMorningAmount,
 } from "@/lib/school/forms";
 import { CLASSES, dayTotals, defaultDeductions, settleWeek, type MorningDay } from "@/lib/school/morning";
 
-import { Chips, formObject, SchoolForm, SelectField, Stepper, TextArea, TextField, type SchoolFormState } from "./form-kit";
+import { Chips, formObject, SchoolForm, SelectField, TextArea, TextField, type SchoolFormState } from "./form-kit";
 
 type Action = (state: SchoolFormState, formData: FormData) => Promise<SchoolFormState>;
 
@@ -48,38 +49,17 @@ const typed = (text: string) => {
   return result.ok ? result.minor : 0;
 };
 
-export function SetupForm({ action, accounts, current }: { action: Action; accounts: { id: string; name: string }[]; current?: string }) {
-  return (
-    <SchoolForm
-      action={action}
-      order={["accountId"]}
-      submitLabel="Save"
-      check={(form) => (new FormData(form).get("accountId") ? { ok: true } : { ok: false, errors: { accountId: "Choose an account." } })}
-    >
-      {({ errors, values }) => (
-        <SelectField
-          name="accountId"
-          label="Where you keep the money"
-          errors={errors}
-          defaultValue={values.accountId ?? current ?? accounts[0]?.id ?? ""}
-          options={accounts.map((a) => ({ value: a.id, label: a.name }))}
-          placeholder="Choose an account"
-        />
-      )}
-    </SchoolForm>
-  );
-}
-
 // --- Morning classes -------------------------------------------------------
 
 export function MorningDayForm({ action, day }: { action: Action; day: MorningDay }) {
-  const [full, setFull] = useState(day.full.map(String));
-  const [less, setLess] = useState(day.lessMinor.map((m) => (m ? formatAmountForInput(m) : "")));
+  const savedAmounts = day.full.map((full, i) => full * day.feeMinor + day.lessMinor[i]);
+  const [amounts, setAmounts] = useState(() => savedAmounts.map(formatAmountForInput));
+  const splits = amounts.map((amount, i) => splitMorningAmount(typed(amount), day.feeMinor, day.full[i], day.lessMinor[i]));
   const now: MorningDay = {
     ...day,
     noClass: false,
-    full: full.map((f) => (/^\d+$/.test(f) ? Number(f) : 0)) as [number, number, number],
-    lessMinor: less.map(typed) as [number, number, number],
+    full: splits.map(({ full }) => full) as MorningDay["full"],
+    lessMinor: splits.map(({ remainder }) => remainder) as MorningDay["lessMinor"],
   };
   const totals = dayTotals(now);
 
@@ -87,31 +67,26 @@ export function MorningDayForm({ action, day }: { action: Action; day: MorningDa
     <SchoolForm
       action={action}
       order={MORNING_DAY_FIELDS}
-      submitLabel="Save today"
-      check={(form) => parseMorningDayForm(formObject(form), todayInAccra())}
+      submitLabel="Save collections"
+      check={(form) => parseMorningDayForm(formObject(form), todayInAccra(), day)}
     >
       {({ errors }) => (
         <>
           <input type="hidden" name="date" value={day.date} />
           {CLASSES.map((name, i) => (
             <section key={name} className="flex flex-col gap-3 rounded-2xl border bg-card p-4">
-              <Stepper
-                name={`full${i + 1}`}
-                label={name}
-                errors={errors}
-                value={full[i]}
-                onChange={(value) => setFull(full.map((f, j) => (j === i ? value : f)))}
-              />
               <TextField
-                name={`less${i + 1}`}
-                label="Paid less than 3.00 (total)"
+                name={`amount${i + 1}`}
+                label={`${name} amount received`}
                 errors={errors}
-                defaultValue={less[i]}
+                value={amounts[i]}
                 prefix="GHS"
                 inputMode="decimal"
-                placeholder="0.00"
-                onChange={(value) => setLess(less.map((v, j) => (j === i ? value : v)))}
+                onChange={(value) => setAmounts((current) => current.map((amount, j) => j === i ? value : amount))}
               />
+              <p className="text-sm text-muted-foreground">
+                Saved: {money(savedAmounts[i])} · {splits[i].full} full payments
+              </p>
             </section>
           ))}
           <section className="flex flex-col gap-1 rounded-2xl border bg-card p-4" aria-live="polite">
@@ -359,7 +334,7 @@ export function PaymentForm({
             defaultValue={values.studentId ?? studentId}
             onChange={setStudentId}
             placeholder="Choose a student"
-            options={[...students.map((s) => ({ value: s.id, label: s.label })), { value: "new", label: "+ New student" }]}
+            options={[{ value: "new", label: "+ New student" }, ...students.map((s) => ({ value: s.id, label: s.label }))]}
           />
           {studentId === "new" ? (
             <div className="grid grid-cols-[1fr_7rem] gap-3">
