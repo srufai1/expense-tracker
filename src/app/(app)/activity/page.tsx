@@ -9,12 +9,11 @@ import { Input } from "@/components/ui/input";
 import { requireUser } from "@/lib/auth";
 import { dayLabel, formatMonth, monthBounds, monthFromParam, shiftMonth, todayInAccra } from "@/lib/dates";
 import { formatMoney } from "@/lib/money";
-import { groupByDay, involvesAccount, matchesSearch, totalsInGhs, type ActivityItem } from "@/lib/transactions";
+import { groupByDay, matchesSearch, totalsInGhs, type ActivityItem } from "@/lib/transactions";
 import { cn } from "@/lib/utils";
 
 import { getAccounts } from "../accounts/data";
 import { getCategories } from "../categories/data";
-import { AccountFilter } from "./account-filter";
 import { getTransactionsBetween, toActivityItems } from "./data";
 
 export const metadata: Metadata = { title: "Activity" };
@@ -33,7 +32,7 @@ export default function ActivityPage(props: PageProps<"/activity">) {
           </Button>
         }
       />
-      {/* ?month, ?q and ?account come from the address (request data), so
+      {/* ?month and ?q come from the address (request data), so
           the list renders inside a Suspense boundary (Cache Components rule). */}
       <Suspense fallback={<p className="text-sm text-muted-foreground">Loading activity…</p>}>
         <ActivityList searchParams={props.searchParams} />
@@ -50,7 +49,6 @@ async function ActivityList({ searchParams }: { searchParams: PageProps<"/activi
   const today = todayInAccra();
   const month = monthFromParam(params.month, today);
   const query = typeof params.q === "string" ? params.q.slice(0, 100) : "";
-  const accountFilter = typeof params.account === "string" ? params.account : "";
 
   const { first, last } = monthBounds(month);
   const [rows, accounts, categories] = await Promise.all([
@@ -59,16 +57,15 @@ async function ActivityList({ searchParams }: { searchParams: PageProps<"/activi
     getCategories(),
   ]);
   const items = toActivityItems(rows, accounts, categories).filter(
-    (item) => (!accountFilter || involvesAccount(item, accountFilter)) && matchesSearch(item, query),
+    (item) => matchesSearch(item, query),
   );
   const totals = totalsInGhs(items);
-  const filtered = query !== "" || accountFilter !== "";
+  const filtered = query !== "";
 
-  // Links keep the search and filter when moving between months.
+  // Links keep the search when moving between months.
   const monthHref = (target: string) => {
     const next = new URLSearchParams({ month: target });
     if (query) next.set("q", query);
-    if (accountFilter) next.set("account", accountFilter);
     return `/activity?${next}`;
   };
 
@@ -94,7 +91,7 @@ async function ActivityList({ searchParams }: { searchParams: PageProps<"/activi
         <input type="hidden" name="month" value={month} />
         <div className="flex gap-2">
           <label htmlFor="q" className="sr-only">
-            Search notes, categories and accounts
+            Search transactions
           </label>
           <Input
             // A new box when the address changes, so it never shows old text.
@@ -111,27 +108,16 @@ async function ActivityList({ searchParams }: { searchParams: PageProps<"/activi
             <Search aria-hidden="true" />
           </Button>
         </div>
-        <label htmlFor="account" className="sr-only">
-          Account
-        </label>
-        <AccountFilter value={accountFilter}>
-          <option value="">All accounts</option>
-          {accounts.map((account) => (
-            <option key={account.id} value={account.id}>
-              {account.name}
-            </option>
-          ))}
-        </AccountFilter>
         {filtered ? (
           <Link href={`/activity?month=${month}`} className="self-start py-2 text-sm font-semibold text-primary">
-            Clear search and filter
+            Clear search
           </Link>
         ) : null}
       </form>
 
       <section aria-label="Totals" className="grid grid-cols-2 gap-2">
-        <Total label="In" minor={totals.inMinor} />
-        <Total label="Out" minor={totals.outMinor} />
+        <Total label="Income" minor={totals.inMinor} />
+        <Total label="Spending" minor={totals.outMinor} />
       </section>
 
       {/* The whole month, without the search or filter: the same workbook
@@ -186,10 +172,7 @@ function ActivityRow({ item }: { item: ActivityItem }) {
     >
       <span className="flex min-w-0 flex-1 flex-col">
         <span className="font-semibold break-words">{item.categoryLabel}</span>
-        <span className="text-xs break-words text-muted-foreground">
-          {item.note ? `${item.note} · ` : ""}
-          {item.accountName}
-        </span>
+        {item.note ? <span className="text-xs break-words text-muted-foreground">{item.note}</span> : null}
       </span>
       <span className={cn("shrink-0 font-bold tabular-nums", income && "text-primary")}>
         {/* Income adds money, an expense takes it away. */}

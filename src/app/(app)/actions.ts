@@ -12,7 +12,7 @@ export async function signOut() {
   redirect("/sign-in");
 }
 
-// Called by IdleSignOut after 20 minutes without activity (D-49). The
+// Called by IdleSignOut after two hours without activity (D-49). The
 // sign-in page then says why.
 export async function signOutIdle() {
   await endSession();

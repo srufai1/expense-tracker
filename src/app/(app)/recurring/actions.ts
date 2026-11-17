@@ -15,6 +15,9 @@ import {
 } from "@/lib/recurring";
 import { createClient } from "@/lib/supabase/server";
 
+import { getOrCreateLedger } from "../accounts/ledger";
+import { LEDGER_CHOICE } from "../activity/ledger-choice";
+
 const CHECK_CONNECTION = "Check your internet connection and try again.";
 
 export type RecurringFormState = {
@@ -37,11 +40,19 @@ export async function saveRule(
 ): Promise<RecurringFormState> {
   await requireUser();
   const values = formValues(formData);
+  if (!id) values.accountId = LEDGER_CHOICE.id;
   const parsed = parseRecurringForm(values);
   if (!parsed.ok) return { errors: parsed.errors, values };
   const input = parsed.value;
 
   const supabase = await createClient();
+  let accountId = input.accountId;
+  if (!id && input.kind === "transfer") return { errors: {}, formError: "Choose income, spending or savings.", values };
+  if (!id && accountId !== null) {
+    const { data, error } = await getOrCreateLedger(supabase);
+    if (error || !data) return { errors: {}, formError: CHECK_CONNECTION, values };
+    accountId = data.id;
+  }
   let currency = input.currency;
   if (input.kind === "transfer" && input.accountId !== null) {
     const { data: from, error } = await supabase
@@ -56,7 +67,7 @@ export async function saveRule(
 
   const row = {
     kind: input.kind,
-    account_id: input.accountId,
+    account_id: accountId,
     category_id: input.categoryId,
     to_account_id: input.toAccountId,
     goal_id: input.goalId,

@@ -1,9 +1,9 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { z } from "zod";
 
 import { requireUser } from "@/lib/auth";
+import { isIsoDate } from "@/lib/dates";
 import { formValues } from "@/lib/form-data";
 import { settleWeek } from "@/lib/school/morning";
 import {
@@ -17,20 +17,24 @@ import type { Fund } from "@/lib/school/fees";
 import { mondayOf, schoolWeekDays } from "@/lib/school/week";
 import { createClient } from "@/lib/supabase/server";
 
+import { getOrCreateLedger } from "../accounts/ledger";
 import type { SchoolFormState } from "./form-kit";
-import { getMorningWeek } from "./data";
+import { getMorningDay, getMorningWeek } from "./data";
 import { CHECK_CONNECTION, refreshAll, schoolError, today } from "./shared-actions";
 
 // Morning classes (D-54) and the savings funds.
 
-// Where school money is kept. Makes the "School money" income category and
-// the "Me" sharer the first time.
-export async function setUpSchoolMoney(_previous: SchoolFormState, formData: FormData): Promise<SchoolFormState> {
+// Set up the school income category and its internal ledger reference.
+export async function setUpSchoolMoney(): Promise<string | undefined> {
   await requireUser();
-  const values = formValues(formData);
-  if (!z.uuid().safeParse(values.accountId).success) return { errors: { accountId: "Choose an account." }, values };
-
   const supabase = await createClient();
+  const { data: existing, error: settingsError } = await supabase.from("school_settings").select("user_id").maybeSingle();
+  if (settingsError) return CHECK_CONNECTION;
+  if (existing) redirect("/school");
+
+  const { data: ledger, error: ledgerError } = await getOrCreateLedger(supabase);
+  if (ledgerError || !ledger) return CHECK_CONNECTION;
+
   const { data: found, error: findError } = await supabase
     .from("categories")
     .select("id")
@@ -38,23 +42,16 @@ export async function setUpSchoolMoney(_previous: SchoolFormState, formData: For
     .is("parent_id", null)
     .ilike("name", "School money")
     .maybeSingle();
-  if (findError) return { errors: {}, formError: CHECK_CONNECTION, values };
+  if (findError) return CHECK_CONNECTION;
   let categoryId = found?.id;
   if (!categoryId) {
     const { data, error } = await supabase.from("categories").insert({ kind: "income", name: "School money" }).select("id").single();
-    if (error) return { errors: {}, formError: CHECK_CONNECTION, values };
+    if (error) return CHECK_CONNECTION;
     categoryId = data.id;
   }
 
-  const { data: existing } = await supabase.from("school_settings").select("user_id").maybeSingle();
-  const { error } = existing
-    ? await supabase.from("school_settings").update({ account_id: values.accountId }).eq("user_id", existing.user_id)
-    : await supabase.from("school_settings").insert({ account_id: values.accountId, income_category_id: categoryId });
-  if (error) {
-    return /GHS accounts/.test(error.message)
-      ? { errors: { accountId: "Choose one of your GHS accounts." }, values }
-      : { errors: {}, formError: CHECK_CONNECTION, values };
-  }
+  const { error } = await supabase.from("school_settings").insert({ account_id: ledger.id, income_category_id: categoryId });
+  if (error && error.code !== "23505") return CHECK_CONNECTION;
 
   const { data: me } = await supabase.from("mc_sharers").select("id").eq("is_me", true).maybeSingle();
   if (!me) await supabase.from("mc_sharers").insert({ name: "Me", is_me: true });
@@ -63,26 +60,37 @@ export async function setUpSchoolMoney(_previous: SchoolFormState, formData: For
   redirect("/school");
 }
 
+const DAY_CHANGED = "This day changed since you opened it. Reopen it to see the latest collections.";
+
 const EMPTY_DAY = { full_1: 0, full_2: 0, full_3: 0, less_1_minor: 0, less_2_minor: 0, less_3_minor: 0 };
 
 // Saves a day's row: changes it when it exists, adds it otherwise.
 async function saveDay(
   day: string,
   row: { no_class: boolean; reason: "holiday" | "exams" | "other" | null; note: string } & typeof EMPTY_DAY,
+  expectedVersion?: string | null,
 ): Promise<string | undefined> {
   const supabase = await createClient();
-  const { data, error } = await supabase.from("mc_days").update(row).eq("day", day).select("day");
-  if (error) return schoolError(error);
-  if (data.length > 0) return undefined;
-  const { error: insertError } = await supabase.from("mc_days").insert({ day, ...row });
-  return insertError ? schoolError(insertError) : undefined;
+  if (expectedVersion !== null) {
+    const update = supabase.from("mc_days").update(row).eq("day", day);
+    if (expectedVersion !== undefined) update.eq("updated_at", expectedVersion);
+    const { data, error } = await update.select("day");
+    if (error) return schoolError(error);
+    if (data.length > 0) return undefined;
+    if (expectedVersion !== undefined) return DAY_CHANGED;
+  }
+  const { error } = await supabase.from("mc_days").insert({ day, ...row });
+  if (error?.code === "23505") return DAY_CHANGED;
+  return error ? schoolError(error) : undefined;
 }
 
-export async function saveMorningDay(_previous: SchoolFormState, formData: FormData): Promise<SchoolFormState> {
+export async function saveMorningDay(expectedVersion: string | null, _previous: SchoolFormState, formData: FormData): Promise<SchoolFormState> {
   await requireUser();
   const values = formValues(formData);
-  const parsed = parseMorningDayForm(values, today());
+  const saved = isIsoDate(values.date) ? await getMorningDay(values.date) : null;
+  const parsed = parseMorningDayForm(values, today(), saved ?? undefined);
   if (!parsed.ok) return { errors: parsed.errors, values };
+  if ((saved?.updatedAt ?? null) !== expectedVersion) return { errors: {}, formError: DAY_CHANGED, values };
   const { date, full, lessMinor } = parsed.value;
   const failed = await saveDay(date, {
     no_class: false,
@@ -94,10 +102,10 @@ export async function saveMorningDay(_previous: SchoolFormState, formData: FormD
     less_1_minor: lessMinor[0],
     less_2_minor: lessMinor[1],
     less_3_minor: lessMinor[2],
-  });
+  }, expectedVersion);
   if (failed) return { errors: {}, formError: failed, values };
   refreshAll();
-  redirect(`/school/morning?week=${mondayOf(date)}`);
+  redirect(`/school/morning/${date}?saved=1`);
 }
 
 export async function markNoClass(_previous: SchoolFormState, formData: FormData): Promise<SchoolFormState> {

@@ -9,7 +9,7 @@ import { getSupabaseEnv } from "./env";
 
 // Runs before every page request (see src/proxy.ts). It does three jobs:
 // 1. Refreshes the Supabase session cookie when it is about to expire.
-// 2. Signs out a visitor idle for 20 minutes (D-49), and notes the time of
+// 2. Signs out a visitor idle for two hours (D-49), and notes the time of
 //    every other signed-in request.
 // 3. Sends signed-out visitors to /sign-in.
 // This is only a first, fast check. Every page and Server Action still
@@ -49,7 +49,7 @@ export async function updateSession(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
   const signedIn = Boolean(data?.claims?.sub);
 
-  // 20 minutes idle (D-49). Not on the reset link's return address (it is
+  // two hours idle (D-49). Not on the reset link's return address (it is
   // about to start a new session) or the daily job (no session).
   const idle = pathname.startsWith("/auth/") || pathname.startsWith("/api/cron")
     ? "none"

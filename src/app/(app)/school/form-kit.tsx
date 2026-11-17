@@ -106,7 +106,8 @@ export function TextField({
   name,
   label,
   errors,
-  defaultValue = "",
+  defaultValue,
+  value,
   prefix,
   type = "text",
   inputMode,
@@ -119,6 +120,7 @@ export function TextField({
   label: string;
   errors: Errors;
   defaultValue?: string;
+  value?: string;
   onChange?: (value: string) => void;
   prefix?: string;
   type?: "text" | "date";
@@ -140,7 +142,8 @@ export function TextField({
           id={name}
           name={name}
           type={type}
-          defaultValue={defaultValue}
+          defaultValue={value === undefined ? defaultValue ?? "" : undefined}
+          value={value}
           onChange={onChange ? (event) => onChange(event.target.value) : undefined}
           inputMode={inputMode}
           placeholder={placeholder}

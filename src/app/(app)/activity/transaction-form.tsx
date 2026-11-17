@@ -206,6 +206,7 @@ export function TransactionForm({
         <ScreenReaderError id="categoryId-error" message={errors.categoryId} />
       </div>
 
+      {accounts.length === 1 ? <input type="hidden" name="accountId" value={accountId} /> : (
       <div className="flex flex-col gap-2">
         <Label htmlFor="accountId">{kind === "income" ? "Into account" : "From account"}</Label>
         <NativeSelect
@@ -225,6 +226,7 @@ export function TransactionForm({
         </NativeSelect>
         <ScreenReaderError id="accountId-error" message={errors.accountId} />
       </div>
+      )}
 
       <div className="flex flex-col gap-2">
         <Label htmlFor="occurredOn">Date</Label>

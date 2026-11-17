@@ -3,6 +3,7 @@ import { z } from "zod";
 import { isIsoDate } from "../dates";
 import { parseAmount } from "../money";
 import { FUND_PURPOSES, NO_CLASS_REASONS, RECIPIENTS, type FundPurpose, type NoClassReason, type Recipient } from "./fees";
+import { MORNING_FEE_MINOR, type MorningDay } from "./morning";
 import { isWeekday } from "./week";
 
 // The School money forms (D-54 – D-56). Each parser runs in the browser
@@ -51,33 +52,34 @@ function run<V, F extends string>(schema: z.ZodType<V>, raw: Record<string, unkn
 
 // --- Morning classes -------------------------------------------------
 
-const count = z
-  .string()
-  .trim()
-  .transform((value) => (value === "" ? "0" : value))
-  .refine((value) => /^\d{1,3}$/.test(value) && Number(value) <= 500, "Enter a number of students, 0 to 500.")
-  .transform(Number);
+export const MORNING_DAY_FIELDS = ["date", "amount1", "amount2", "amount3"] as const;
+export type MorningDayValue = Pick<MorningDay, "date" | "full" | "lessMinor">;
 
-export const MORNING_DAY_FIELDS = ["date", "full1", "less1", "full2", "less2", "full3", "less3"] as const;
-export type MorningDayErrors = Partial<Record<(typeof MORNING_DAY_FIELDS)[number], string>>;
-export type MorningDayValue = { date: string; full: [number, number, number]; lessMinor: [number, number, number] };
+export function splitMorningAmount(minor: number, feeMinor: number, savedFull: number, savedRemainder: number) {
+  // Preserve the original sharing calculation for previously recorded class totals.
+  if (minor === savedFull * feeMinor + savedRemainder) {
+    return { full: savedFull, remainder: savedRemainder };
+  }
+  return { full: Math.floor(minor / feeMinor), remainder: minor % feeMinor };
+}
 
-export function parseMorningDayForm(raw: Record<string, unknown>, today: string): Result<MorningDayValue, (typeof MORNING_DAY_FIELDS)[number]> {
-  const schema = z
-    .object({
-      date: pastDate(today).refine(isWeekday, "Morning classes are Monday to Friday."),
-      full1: count,
-      less1: moneyOrZero,
-      full2: count,
-      less2: moneyOrZero,
-      full3: count,
-      less3: moneyOrZero,
-    })
-    .transform((v) => ({
-      date: v.date,
-      full: [v.full1, v.full2, v.full3] as [number, number, number],
-      lessMinor: [v.less1, v.less2, v.less3] as [number, number, number],
-    }));
+export function parseMorningDayForm(
+  raw: Record<string, unknown>, today: string, saved?: MorningDay,
+): Result<MorningDayValue, (typeof MORNING_DAY_FIELDS)[number]> {
+  const feeMinor = saved?.feeMinor ?? MORNING_FEE_MINOR;
+  const classAmount = (index: number) => moneyOrZero
+    .transform((minor) => splitMorningAmount(minor, feeMinor, saved?.full[index] ?? 0, saved?.lessMinor[index] ?? 0))
+    .refine(({ full }) => full <= 500, "Enter an amount covering at most 500 full payments.");
+  const schema = z.object({
+    date: pastDate(today).refine(isWeekday, "Morning classes are Monday to Friday."),
+    amount1: classAmount(0),
+    amount2: classAmount(1),
+    amount3: classAmount(2),
+  }).transform(({ date, amount1, amount2, amount3 }) => ({
+    date,
+    full: [amount1.full, amount2.full, amount3.full] as MorningDayValue["full"],
+    lessMinor: [amount1.remainder, amount2.remainder, amount3.remainder] as MorningDayValue["lessMinor"],
+  }));
   return run(schema, raw, MORNING_DAY_FIELDS);
 }
 

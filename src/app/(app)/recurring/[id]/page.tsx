@@ -45,7 +45,7 @@ async function EditRule({ params }: { params: PageProps<"/recurring/[id]">["para
         action={saveRule.bind(null, rule.id)}
         submitLabel="Save changes"
         categories={choices.categories}
-        accounts={choices.accounts}
+        accounts={rule.kind === "transfer" ? choices.accounts : choices.accounts.filter((account) => account.id === rule.accountId)}
         goals={goalChoices(goalNames, rule.goalId ?? undefined)}
         initial={{
           kind: rule.kind,
